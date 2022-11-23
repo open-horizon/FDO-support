@@ -1,16 +1,12 @@
 /ocs-api/ocs-api
 /ocs-api/linux/
-/ocs-api/ocs-db/
-/keys/ecdsa256Key/
-/keys/ecdsa384Key/
-/keys/rsaKey/
+/owner-api/ocs-db/
+/owner-api/agent-install.crt
 
 # Where the SDO files are downloaded to
 /sdo/
 # Where the FDO files are downloaded to 
 /fdo/
-/fdo1.1/
-/ocs-api/
 #todo: remove
 
 /vendor/
