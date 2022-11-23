@@ -48,6 +48,10 @@ func main() {
 	// Process cmd line args and env vars
 	port := os.Args[1]
 	OcsDbDir = os.Args[2]
+	workingDir, err := os.Getwd()
+	if err != nil {
+            fmt.Println(err)
+        }
 	outils.SetVerbose()
 	ExchangeInternalRetries = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_RETRIES", 12) // by default a total of 1 minute of trying
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
@@ -80,7 +84,7 @@ func main() {
 			// Note: supposedly we could instead use this regex to check for base64 encoding: ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$
 			crtBytes = []byte(os.Getenv("EXCHANGE_INTERNAL_CERT"))
 		}
-		ExchangeInternalCertPath = "/Users/lorenzoking/Documents/src/github.com/open-horizon/FDO-support/owner-api/agent-install.crt"
+		ExchangeInternalCertPath = workingDir + "/agent-install.crt"
 		outils.Verbose("Creating %s ...", ExchangeInternalCertPath)
 		if err := ioutil.WriteFile(ExchangeInternalCertPath, crtBytes, 0644); err != nil {
 			outils.Fatal(3, "could not create "+ExchangeInternalCertPath+": "+err.Error())
