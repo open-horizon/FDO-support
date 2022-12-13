@@ -16,7 +16,7 @@ The software in this git repository provides integration between FDO and Open Ho
 
 ### <a name="start-services-developer"></a>Starting Your Own Instance of the FDO Owner Services
 
-The FDO owner services respond to booting devices and enable administrators to import ownership vouchers, keys and files. 
+The FDO owner services respond to booting devices and enable administrators to import ownership vouchers, keys and files.
 
 The FDO owner services are packaged as a single docker container that can be run on any server that has network access, and that the FDO devices can reach over the network.
 
@@ -47,7 +47,7 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
    ```
 
    **Note:**
-   * The Open Horizon FDO support code includes a built-in rendezvous server that can be used during development or air-gapped environments. 
+    * The Open Horizon FDO support code includes a built-in rendezvous server that can be used during development or air-gapped environments.
 
 2. Query the Owner services health and version:
 
@@ -70,7 +70,7 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
    curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET $FDO_RV_URL/health
 
    ```
-   
+
 
 ### <a name="init-device"></a>Simulate Manufacturing Steps to Generate Ownership Voucher
 
@@ -78,7 +78,7 @@ For production use of FDO, you need to import an Ownership Voucher into the owne
 
 ####################
 
- The sample script called `start-mfg.sh` downloads and extracts all necessary components for the Manufacturing services. After building the manufacturing services, it then simulates the steps of an FDO-enabled device manufacturer: Initialize your "device" with FDO, retrieve a public key (from the Owner service) based of the device metadata, and retrieve an ownership voucher (from the manufacturer). Perform these steps on the VM device to be initialized (these steps are written for Ubuntu 22.04):
+The sample script called `start-mfg.sh` downloads and extracts all necessary components for the Manufacturing services. After building the manufacturing services, it then simulates the steps of an FDO-enabled device manufacturer: Initialize your "device" with FDO, retrieve a public key (from the Owner service) based of the device metadata, and retrieve an ownership voucher (from the manufacturer). Perform these steps on the VM device to be initialized (these steps are written for Ubuntu 22.04):
 
  ```bash
 curl -sSLO https://raw.githubusercontent.com/open-horizon/SDO-support/fdo1.0/sample-mfg/start-mfg.sh
@@ -108,7 +108,7 @@ curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://l
 2. On your VM to be initialized, go to the device directory and run the following command to initialize your VM "Device":
 
 ```bash
-cd fdo/pri-fidoiot-v1.1.1/device
+cd fdo/pri-fidoiot-v1.1.3/device
 java -jar device.jar
 ```
 The response should end with  
@@ -151,12 +151,12 @@ The ownership voucher created for the device in the previous step needs to be im
    hzn voucher import owner_voucher.txt
    ```
 
-**Note:** If importing the voucher is succesful, the response body will be the ownership voucher guid which you will need in order to initiate To0 or to check the status of a specific device. 
+**Note:** If importing the voucher is succesful, the response body will be the ownership voucher guid which you will need in order to initiate To0 or to check the status of a specific device.
 
 ### <a name="service-info"></a>Configuring Service Info Package
 
- In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
- 
+In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
+
 1. Configure the Owner Services TO2 address using the following API
 
  ```bash
@@ -200,11 +200,11 @@ When an FDO-enabled device (like your VM) boots, it starts the FDO process. The 
 1. **Back on your VM device** go to the device directory and run the following API command to "boot" your device:
 
 ```bash
-cd fdo/pri-fidoiot-v1.1.1/device
+cd fdo/pri-fidoiot-v1.1.3/device
 java -jar device.jar
 ```
 
-Now that FDO has configured your edge device, it is automatically disabled on this device so that when the device is rebooted FDO will not run. (The sole purpose of FDO is configuration of a brand new device.) 
+Now that FDO has configured your edge device, it is automatically disabled on this device so that when the device is rebooted FDO will not run. (The sole purpose of FDO is configuration of a brand new device.)
 
 If you run into any database password errors or you just want to run through this process again with a fresh database
 
@@ -217,7 +217,7 @@ DROP ROLE fdo;
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
-- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.0.2/owner/app-data/service.log for error messages.
+- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.3/owner/app-data/service.log for error messages.
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB
 
@@ -228,8 +228,8 @@ These steps only need to be performed by developers of this project
 
 - Create a [release](https://github.com/open-horizon/SDO-support/releases) with the major and minor version (but not a patch number), e.g. `v1.11`
 - Upload these assets to the release:
-  - sample-mfg/start-mfg.sh
-  - docker/start-fdo.sh
+    - sample-mfg/start-mfg.sh
+    - docker/start-fdo.sh
 - Copy the previous version of the `README-*.md` to a new version and make the appropriate changes
 
 ### <a name="new-fdo-version"></a>Checklist For Moving Up to a New FDO Version
@@ -242,14 +242,14 @@ What to modify in our FDO support code when Intel releases a new version of FDO:
 - Update `getFDO.sh` to download/unpack new version
 - If new major or minor version, make copy of README. If a fix pack, just update the version numbers within the README.
 - Search for previous version number in rest of repo. Should find hits to change in:
-  - `start-fdo.sh`
-  - `docs/README.md`
-  - `start-mfg.sh`
+    - `start-fdo.sh`
+    - `docs/README.md`
+    - `start-mfg.sh`
 
 - If new major or minor version:
-   - update `.gitignore`
-   - create a new release in https://github.com/open-horizon/SDO-support/releases/ , and upload all device-related files/scripts.
+    - update `.gitignore`
+    - create a new release in https://github.com/open-horizon/SDO-support/releases/ , and upload all device-related files/scripts.
 - If a fix pack:
-   - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/SDO-support/releases/
-   - Update the title and description to indicate the new fix pack version
+    - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/SDO-support/releases/
+    - Update the title and description to indicate the new fix pack version
 - When testing, copy new versions of scripts to the test machines

@@ -1,0 +1,5 @@
+github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
+github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/open-horizon/SDO-support v1.11.11 h1:J51X6VvWGi5xPnulKAg5X9lyaFKDCbaBTssNpZ0K13w=
+github.com/open-horizon/SDO-support/ocs-api v0.0.0-20221102173938-fbe103ca0f74 h1:5HN0JHdkpGAvAECbsmdbO0cqB8roE9AqMJ64fjItEk8=
+github.com/open-horizon/SDO-support/ocs-api v0.0.0-20221102173938-fbe103ca0f74/go.mod h1:v5Ed2dw9Jjv3Gk8aGlnotRttPvh8Tcz0DHoA+BdtUL4=

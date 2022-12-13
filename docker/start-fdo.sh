@@ -7,14 +7,14 @@ ownerPortDefault='8042'
 rvPortDefault='8040'
 
 workingDir='fdo'
-deviceBinaryDir='pri-fidoiot-v1.1.1' 
+deviceBinaryDir='pri-fidoiot-v1.1.3'
 # These can be passed in via CLI args or env vars
 ownerApiPort="${1:-$ownerPortDefault}"  # precedence: arg, or tls port, or non-tls port, or default
 ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
 #VERBOSE='true'   # let it be set by the container provisioner
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.1}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.3}
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
@@ -73,23 +73,14 @@ isDockerComposeAtLeast() {
 
 ###### MAIN CODE ######
 
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" ]]; then
-    echo "Error: This environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH"
+if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$HZN_FDO_SVC_URL" || -z "$FDO_DEV" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, HZN_FDO_SVC_URL, FDO_DEV"
     exit 0
 fi
 
 # Get the other files we need from our git repo, by way of our device binaries tar file
 if [[ ! -d $workingDir/$deviceBinaryDir ]]; then
-echo "$deviceBinaryDir DOES NOT EXIST"
-    deviceBinaryTar="$deviceBinaryDir.tar.gz"
-    deviceBinaryUrl="$FDO_SUPPORT_RELEASE/$deviceBinaryTar"
-    echo "Removing old PRI tar files, and getting and unpacking $deviceBinaryDir ..."
-    rm -rf $workingDir/pri-fidoiot-*   # it is important to only have 1 device binary dir, because the device script does a find to locate device.jar
-    mkdir -p $workingDir && cd $workingDir
-    httpCode=$(curl -w "%{http_code}" --progress-bar -L -O  $deviceBinaryUrl)
-    chkHttp $? $httpCode "getting $deviceBinaryTar"
-    tar -zxf $deviceBinaryTar
-    cd
+  echo "$workingDir/$deviceBinaryDir DOES NOT EXIST, Run ./getFDO.sh for latest builds"
 fi
 
 # If docker isn't installed, do that
@@ -97,11 +88,12 @@ if ! command -v docker >/dev/null 2>&1; then
     echo "Docker is required, installing it..."
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     chk $? 'adding docker repository key'
-    add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    add-apt-repository "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" #makes you press ENTER
     chk $? 'adding docker repository'
     apt-get install -y docker-ce docker-ce-cli containerd.io
     chk $? 'installing docker'
 fi
+
 #make sure Docker daemon is running
 sudo chmod 666 /var/run/docker.sock
 # If haveged isnt installed, install it !
@@ -161,44 +153,84 @@ if ! psql -lqt | cut -d \| -f 1 | grep -qw 'fdo'; then
 fi
 
 #download PostgreSQL JDBC jar
-cd fdo/pri-fidoiot-v1.1.1/owner/lib
-httpCode=$(curl -w "%{http_code}" --progress-bar -L -O  https://jdbc.postgresql.org/download/postgresql-42.4.0.jar)
+cd $workingDir/$deviceBinaryDir/owner/lib
+httpCode=$(curl -w "%{http_code}" --progress-bar -L -O  https://jdbc.postgresql.org/download/postgresql-42.4.2.jar)
 chkHttp $? $httpCode "getting $deviceBinaryTar"
+httpCode=$(curl -w "%{http_code}" --progress-bar -L -O  https://repo1.maven.org/maven2/org/checkerframework/checker-qual/3.5.0/checker-qual-3.5.0.jar)
 cd ../../../..
 
 #edit manifest of aio.jar so that it will find the postgresql jar we just downloaded in the lib directory
-unzip fdo/pri-fidoiot-v1.1.1/owner/aio.jar
+unzip $workingDir/$deviceBinaryDir/owner/aio.jar
 chk $? 'unzip'
-sed -i -e 's/Class-Path:/Class-Path: lib\/postgresql-42.4.0.jar/' META-INF/MANIFEST.MF
+sed -i -e 's/Class-Path:/Class-Path: lib\/postgresql-42.4.2.jar/' META-INF/MANIFEST.MF
 chk $? 'sed classpath of aio.jar manifest'
-zip -r fdo/pri-fidoiot-v1.1.1/owner/aio.jar org META-INF
+sed -i -e 's/Class-Path:/Class-Path: lib\/checker-qual-3.5.0.jar/' META-INF/MANIFEST.MF
+chk $? 'sed classpath of aio.jar manifest'
+zip -r $workingDir/$deviceBinaryDir/owner/aio.jar org META-INF
 chk $? 're-zip'
 #clean-up files
 rm -r org META-INF
 chk $? 'deleting unzipped files'
 
-echo "Using ports: Owner Service: $ownerPort, RV: $rvPort"
-##Change from default H2 database to postgresql
+#MODIFY postgresql.conf and pg_hba.conf to allow Postgresdb to listen -
+sed -i -e 's/# TYPE  DATABASE        USER            ADDRESS                 METHOD/# TYPE  DATABASE        USER            ADDRESS                 METHOD\nhost    all             all             0.0.0.0\/0               md5/' /etc/postgresql/*/main/pg_hba.conf
+chk $? 'sed pg_hba.conf'
+
+sed -i -e "s/#listen_addresses =.*/listen_addresses = '*' /" /etc/postgresql/*/main/postgresql.conf
+chk $? 'sed postgresql.conf'
+
+#MODIFY /etc/hosts to include host.docker.internal
+sed -i -e '1 a127.0.0.1 host.docker.internal' /etc/hosts
+
+#then restart postgres service
+sudo systemctl restart postgresql
+
+echo "Using ports: Owner Service: $ownerPort"
 
 # Run key generation script
-echo "Running key generation script..."
-(cd fdo/pri-fidoiot-v1.1.1/scripts && ./keys_gen.sh)
-# Replacing component credentials 
-(cd fdo/pri-fidoiot-v1.1.1/scripts && cp -r creds/. ../)
+# Declare an array of string with type
+declare -a ScriptArray=("./demo_ca.sh" "./web_csr_req.sh" "./user_csr_req.sh" "./keys_gen.sh")
 
-#configure to use PostgreSQL database
-sed -i -e 's/org.h2.Driver/org.postgresql.Driver/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
-chk $? 'sed owner/service.yml driver_class'
-sed -i -e 's/jdbc:h2:tcp:\/\/localhost:8051\/.\/app-data\/emdb/jdbc:postgresql:\/\/localhost:5432\/fdo/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
-chk $? 'sed owner/service.yml connection url'
-sed -i -e 's/org.hibernate.dialect.H2Dialect/org.hibernate.dialect.PostgreSQLDialect/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
-chk $? 'sed owner/service.yml dialect'
-sed -i -e 's/StandardDatabaseServer/RemoteDatabaseServer/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
-chk $? 'sed owner/service.yml database server worker'
+# Iterate the string array using for loop
+for val in ${ScriptArray[@]}; do
+   (cd $workingDir/$deviceBinaryDir/scripts && chmod +x $val)
+   echo $val
+   (cd $workingDir/$deviceBinaryDir/scripts && $val)
+done
+
+# CHANGE db_password.txt to fdo
+
+echo "Running key generation script..."
+# Replacing component credentials
+(cd $workingDir/$deviceBinaryDir/scripts && sudo chmod 777 secrets/server-key.pem)
+(cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
 
 #override auto-generated DB username and password
-sed -i -e 's/db_user=.*/db_user=fdo/' fdo/pri-fidoiot-v1.1.1/owner/service.env
-sed -i -e 's/db_password=.*/db_password=fdo/' fdo/pri-fidoiot-v1.1.1/owner/service.env
+sed -i -e 's/db_user=.*/db_user=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/db_password=.*/db_password=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
+
+##configure hibernate.cfg.xml to use PostgreSQL database
+sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
+#sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
+chk $? 'sed hibernate.cfg.xml driver_class'
+
+#configure web.xml for http support (devolopment)
+sed -i -e 's/<transport-guarantee>CONFIDENTIAL<\/transport-guarantee>/<transport-guarantee>NONE<\/transport-guarantee>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
+sed -i -e 's/<auth-method>CLIENT-CERT<\/auth-method>/<auth-method>DIGEST<\/auth-method>\n<realm-name>Digest Authentication<\/realm-name>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
+
+sed -i -e 's/jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=$(useSSL)/jdbc:postgresql:\/\/host.docker.internal:5432\/fdo/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml connection url'
+sed -i -e 's/org.hibernate.dialect.MariaDBDialect/org.hibernate.dialect.PostgreSQLDialect/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml dialect'
+sed -i -e 's/server.api.password: "null"/server.api.password: $(api_password)/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml server.api.password'
+
+
+sed -i -e '/secrets:/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml secrets'
+sed -i -e '/- db_password/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml db_password'
+
 
 if [[ "$FDO_DEV" == '1' || "$FDO_DEV" == 'true' ]]; then
 
@@ -212,53 +244,41 @@ if [[ "$FDO_DEV" == '1' || "$FDO_DEV" == 'true' ]]; then
           chk $? 'installing java 11'
       fi
 
-    echo "Using local testing configuration, because FDO_DEV=$FDO_DEV"
-    #Configuring Owner services for development, If you are running the local
-    #development RV server, then you must disable the port numbers for rv/docker-compose.yml & owner/docker-compose.yml
-    sed -i -e '/ports:/ s/./#&/' fdo/pri-fidoiot-v1.1.1/owner/docker-compose.yml
-    chk $? 'sed ports for owner/docker-compose.yml'
-    sed -i -e '/- "8042:8042"/ s/./#&/' fdo/pri-fidoiot-v1.1.1/owner/docker-compose.yml
-    chk $? 'sed 8042 for owner/docker-compose.yml'
-    sed -i -e '/- "8043:8043"/ s/./#&/' fdo/pri-fidoiot-v1.1.1/owner/docker-compose.yml
-    chk $? 'sed 8043 for owner/docker-compose.yml'
-    sed -i -e 's/image: pri-fdo-owner/image: pri-fdo-owner\n    network_mode: host/' fdo/pri-fidoiot-v1.1.1/owner/docker-compose.yml
-    chk $? 'sed network_mode: host for owner/docker-compose.yml'
+#    echo "Using local testing configuration, because FDO_DEV=$FDO_DEV"
+#    #Configuring Owner services for development, If you are running the local
+#    #development RV server, then you must disable the port numbers for rv/docker-compose.yml & owner/docker-compose.yml -- DO NOT COMMENT OUT
+
 
     #Disabling https for development/testing purposes
-    sed -i -e '/- org.fidoalliance.fdo.protocol.StandardOwnerSchemeSupplier/ s/./#&/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
+    sed -i -e '/- org.fidoalliance.fdo.protocol.StandardOwnerSchemeSupplier/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
     chk $? 'sed owner/service.yml'
-    sed -i -e 's/#- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/' fdo/pri-fidoiot-v1.1.1/owner/service.yml
+    sed -i -e 's/#- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/' $workingDir/$deviceBinaryDir/owner/service.yml
     chk $? 'sed owner/service.yml'
 
-    #Configuring local RV server for development
-    sed -i -e '/ports:/ s/./#&/' fdo/pri-fidoiot-v1.1.1/rv/docker-compose.yml
-    sed -i -e '/- "8040:8040"/ s/./#&/' fdo/pri-fidoiot-v1.1.1/rv/docker-compose.yml
-    sed -i -e '/- "8041:8041"/ s/./#&/' fdo/pri-fidoiot-v1.1.1/rv/docker-compose.yml
-    sed -i -e 's/image: pri-fdo-rv/image: pri-fdo-rv\n    network_mode: host/' fdo/pri-fidoiot-v1.1.1/rv/docker-compose.yml
-    #sed -i -e '/network_mode: host/ s/./#&/' rv/docker-compose.yml
-    chk $? 'sed rv/docker-compose.yml'
 
-    #Use HZN_EXCHANGE_USER_AUTH for Owner and RV services API password
+    #Use HZN_EXCHANGE_USER_AUTH for Owner services API password
     USER_AUTH=$HZN_EXCHANGE_USER_AUTH
     removeWord="apiUser:"
     api_password=${USER_AUTH//$removeWord/}
-    sed -i -e 's/api_password=.*/api_password='$api_password'/' fdo/pri-fidoiot-v1.1.1/owner/service.env
-    sed -i -e 's/api_password=.*/api_password='$api_password'/' fdo/pri-fidoiot-v1.1.1/rv/service.env
+    sed -i -e 's/api_user=.*/api_user=apiUser \napi_password='$api_password'/' $workingDir/$deviceBinaryDir/owner/service.env
+    sed -i -e 's/user-cert/user_cert/' $workingDir/$deviceBinaryDir/owner/service.env
+    sed -i -e 's/ssl-ca/ssl_ca/' $workingDir/$deviceBinaryDir/owner/service.env
+    sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
     #Delete owner and rv service db files here if re-running in a test environment
-    #rm fdo/pri-fidoiot-v1.1.1/owner/app-data/emdb.mv.db && fdo/pri-fidoiot-v1.1.1/rv/app-data/emdb.mv.db
+    #rm $workingDir/$deviceBinaryDir/owner/app-data/emdb.mv.db && $workingDir/$deviceBinaryDir/rv/app-data/emdb.mv.db
 
 else
 
   #Production Environment HTTPS
 
-#        ssl_password=$(cat fdo/pri-fidoiot-v1.1.1/owner/service.env | grep "ssl_password" | awk -F= '{print $2}')
+#        ssl_password=$(cat $workingDir/$deviceBinaryDir/owner/service.env | grep "ssl_password" | awk -F= '{print $2}')
 #        #generate SSL cert and put it in a keystore
 #        FDO_OWNER_DNS=$(echo "$HZN_FDO_SVC_URL" | awk -F/ '{print $3}' | awk -F: '{print $1}')
 #        echo "FDO_OWNER_DNS: ${HZN_FDO_SVC_URL}"
 #        keytool -genkeypair -alias ssl -keyalg RSA -keysize 2048 -dname "CN='"${FDO_OWNER_DNS}"'" -keypass ${ssl_password} -validity 100 -storetype PKCS12 -keystore ssl.p12 -storepass ${ssl_password}
 #
 #        #we must start the owner service, give it the SSL certificate via HTTP, then reboot it in order to enable HTTPS
-#        (cd fdo/pri-fidoiot-v1.1.1/owner && docker-compose up --build -d)
+#        (cd $workingDir/$deviceBinaryDir/owner && docker-compose up --build -d)
 #        echo -n "waiting for owner service to boot."
 #        httpCode=500
 #        while [ $httpCode != 200 ]
@@ -280,15 +300,12 @@ else
 #        docker rm pri-fdo-owner
 #
     #Comment out network_mode: host for Owner services. Need TLS work
-    sed -i -e '/network_mode: host/ s/./#&/' fdo/pri-fidoiot-v1.1.1/owner/docker-compose.yml
+    sed -i -e '/network_mode: host/ s/./#&/' $workingDir/$deviceBinaryDir/owner/docker-compose.yml
 
 fi
 
-# Run all of the services
+#Run all of the services
 echo "Starting owner service..."
 #(cd owner && java -jar aio.jar)
-(cd fdo/pri-fidoiot-v1.1.1/owner && docker-compose up --build  -d) 
+(cd $workingDir/$deviceBinaryDir/owner && docker-compose up --build)
 
-echo "Starting rendezvous service..."
-#(cd rv && java -jar aio.jar)
-(cd fdo/pri-fidoiot-v1.1.1/rv && docker-compose up --build  -d)

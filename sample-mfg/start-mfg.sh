@@ -11,21 +11,20 @@
 usage() {
     exitCode=${1:-0}
     cat << EndOfMessage
-Usage: ${0##*/} [<owner-pub-key-file>]
+Usage: ${0##*/} [<rvHttpPort>] [<rvHttpsPort>]
 
 Arguments:
   <owner-pub-key-file>  Device customer/owner public key. This is needed to extend the voucher to the owner. If not specified, it will use default SECP256R1 public key obtained from owner services
 
 Required Environment Variables:
-  FDO_RV_URL: usually the dev RV running in the sdo-owner-services. To use the real Intel RV service, set to http://sdo-sbx.trustedservices.intel.com or http://sdo.trustedservices.intel.com 
+  FDO_RV_URL: usually the development RV server running with the owner services. To use the production RV service, set to http://sdo.lfedge.iol.unh.edu:80
+  HZN_EXCHANGE_USER_AUTH: API password for manufacturing service APIs
+  HZN_FDO_SVC_URL: Owner Service url.
 
 Optional Environment Variables:
-  SDO_MFG_IMAGE_TAG - version of the manufacturer and manufacturer-mariadb docker images that should be used. Defaults to '1.10'.
-  HZN_MGMT_HUB_CERT - the base64 encoded content of the SDO owner services self-signed certificate (if it requires that). This is normally not necessary on the device, because the SDO protocols are secure over HTTP.
-  SDO_SAMPLE_MFG_KEEP_SVCS - set to 'true' to skip shutting down the mfg docker containers at the end of this script. This is faster if running this script repeatedly during dev/test.
-  SDO_SUPPORT_REPO - if you need to use a more recent version of SDO files from the repo than the 1.10 released files. This takes precedence over SDO_SUPPORT_RELEASE.
-  SDO_SUPPORT_RELEASE - if you need to use a specific set of released files.
-  SDO_DEVICE_USE_NATIVE_CLIENT - Set to 'true' to use the native SDO device client. (To use this, you need to request the 'sdo' native docker image from Intel Developer Zone and load it on this host before running this script.) Otherwise, the reference implementation java device client will be used. 
+  rvHttpPort: Rendezvous server http port. If no http present, then set this as the https port
+  rvHttpsPort: Rendezvous server https port
+
 
 ${0##*/} must be run in a directory where it has access to create a few files and directories.
 EndOfMessage
@@ -37,13 +36,14 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH"
+    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL"
     exit 0
 fi
 
 
 deviceBinaryDir='pri-fidoiot-v1.1.1'   # the place we will unpack sdo_device_binaries_1.10_linux_x64.tar.gz to
-ownerPubKeyFile=${1}
+rvHttpPort=${1:-8040}
+rvHttpsPort=${2:-8040} #Will change to 8041 when https is enabled
 rvUrl="$FDO_RV_URL"   # the external rv url that the device should reach it at
 
 #If the passed argument is a file, save the file directory path
@@ -56,18 +56,12 @@ if [[ -f "$ownerPubKeyFile" ]]; then
 fi
 
 # These environment variables can be overridden
-SDO_MFG_IMAGE_TAG=${SDO_MFG_IMAGE_TAG:-1.10}
-# default SDO_SUPPORT_REPO to blank, so SDO_SUPPORT_RELEASE will be used
-#SDO_SUPPORT_REPO=${SDO_SUPPORT_REPO:-https://raw.githubusercontent.com/open-horizon/SDO-support/master}
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.1}
-useNativeClient=${SDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
+useNativeClient=${FDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
 
 workingDir=fdo
-privateKeyFile=$deviceBinaryDir/keys/manufacturer-keystore.p12
-
 dbUser='fdo'
 dbPw='fdo'
-sdoNativeDockerImage='fdo:1.0'
 IP_REGEX='^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 
 #====================== Functions ======================
@@ -137,14 +131,6 @@ ensureWeAreRoot() {
     fi
 }
 
-# Parses the voucher to get the UUID of the device (which will be our node id)
-parseVoucher() {
-    local voucherFile=$1
-    local uuid=$(jq -r .oh.g $voucherFile | base64 -d | hexdump -v -e '/1 "%02x" ')
-    chk $? 'parse voucher'
-    echo "${uuid:0:8}-${uuid:8:4}-${uuid:12:4}-${uuid:16:4}-${uuid:20}"
-}
-
 # Is this deb pkg installed
 isDebPkgInstalled() {
     local pkgName="$1"
@@ -184,36 +170,30 @@ echo "creating and switching to $workingDir"
 
 # Determine whether to use native sdo client, or java client.
 # Note: Now that we default useNativeClient, this automatic determination is never used, because you have to request the native docker image before you can use it here.
-if [[ -z "$useNativeClient" ]]; then
-    if [[ "$(systemd-detect-virt 2>/dev/null)" == 'none' ]]; then
-        useNativeClient='host'   # A physical server
-    else
-        useNativeClient='false'   # A VM
-    fi
-    # Also could use these cmds to determine, but there are more acceptable values to check for
-    # lscpu | grep 'Hypervisor vendor:' == non-blank or blank
-    # dmidecode -s system-manufacturer | awk '{print $1}' == Intel(R), IBM. QEMU, innotek (virtual box), VMware
-fi
+#if [[ -z "$useNativeClient" ]]; then
+#    if [[ "$(systemd-detect-virt 2>/dev/null)" == 'none' ]]; then
+#        useNativeClient='host'   # A physical server
+#    else
+#        useNativeClient='false'   # A VM
+#    fi
+#    # Also could use these cmds to determine, but there are more acceptable values to check for
+#    # lscpu | grep 'Hypervisor vendor:' == non-blank or blank
+#    # dmidecode -s system-manufacturer | awk '{print $1}' == Intel(R), IBM. QEMU, innotek (virtual box), VMware
+#fi
 # else they explicitly set it
 
 # Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
 confirmcmds grep curl ping   # these should be in the minimal ubuntu
 
-if [[ $useNativeClient != 'false' ]]; then   # for both host and docker we run DI via the docker container
-    if [[ -z $(docker images -q $sdoNativeDockerImage) ]]; then
-        echo "Error: docker image $sdoNativeDockerImage does not exist on this host."
-        exit 2
-    fi
-else
     # If java 11 isn't installed, do that
-    if java -version 2>&1 | grep version | grep -q 11.; then
+if java -version 2>&1 | grep version | grep -q 11.; then
         echo "Found java 11"
-    else
+else
         echo "Java 11 not found, installing it..."
         apt-get update && apt-get install -y openjdk-11-jre-headless
         chk $? 'installing java 11'
     fi
-fi
+
 
 if ! command haveged --help >/dev/null 2>&1; then
     echo "Haveged is required, installing it"
@@ -231,7 +211,7 @@ if ! command -v docker >/dev/null 2>&1; then
     apt-get install -y docker-ce docker-ce-cli containerd.io
     chk $? 'installing docker'
 fi
-sudo chmod 666 /var/run/docker.sock
+
 
 # If docker-compose isn't installed, or isn't at least 1.21.0 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
 # For the dependency on 1.21.0 or greater, see: https://docs.docker.com/compose/release-notes/
@@ -266,31 +246,12 @@ echo "$deviceBinaryDir DOES NOT EXIST"
     tar -zxf $deviceBinaryTar
 fi
 
-# The mfg private key is either a URL we retrieve, or a file we use as-is
-# mkdir -p keys
-# if [[ ${privateKeyFile:0:4} == 'http' ]]; then
-#     echo "Getting $privateKeyFile ..."
-#     httpCode=$(curl -w "%{http_code}" -sSL -o keys/manufacturer-keystore.p12 $privateKeyFile)
-#     chkHttp $? $httpCode 'getting mfg private key'
-#     privateKeyFile='keys/manufacturer-keystore.p12'
-# elif [[ $privateKeyFile == "$deviceBinaryDir/keys/manufacturer-keystore.p12" ]]; then
-#     :   # we will get if from $deviceBinaryDir later
-# elif [[ ! -f $privateKeyFile ]]; then
-#     echo "Error: $privateKeyFile does not exist"
-#     exit 1
-# fi
-
-# The owner public key is either a URL we retrieve, or a file we use as-is
-# if [[ ! -f $ownerPubKeyFile ]]; then
-#     echo "Error: $ownerPubKeyFile does not exist"
-#     exit 1
-# fi
 
 # Run key generation script
 echo "Running key generation script..."
 
 (cd $PWD/$deviceBinaryDir/scripts && ./keys_gen.sh)
-# Replacing component credentials 
+# Replacing component credentials
 (cd $PWD/$deviceBinaryDir/scripts && cp -r creds/. ../)
 
 #Configurations
@@ -308,12 +269,12 @@ sed -i -e 's/api_password=.*/api_password='$api_password'/' $PWD/$deviceBinaryDi
 
 echo "Starting manufacturer service..."
 sudo chmod 666 /var/run/docker.sock
-#(cd owner && java -jar aio.jar)
 (cd $PWD/$deviceBinaryDir/manufacturer && docker-compose up --build  -d)
 
 #get Domain Name from Rendezvous Server URL
 FDO_RV_DNS=$(echo "$FDO_RV_URL" | awk -F/ '{print $3}' | awk -F: '{print $1}')
 echo "FDO_RV_DNS: ${FDO_RV_DNS}"
+
 
 echo -n "waiting for manufacturer service to boot."
 httpCode=500
@@ -325,8 +286,8 @@ do
 done
 echo ""
 
-echo "setting rendezvous server location to ${FDO_RV_DNS}:8040"
-response=$(curl -s -w "%{http_code}" -D - --digest -u ${USER_AUTH} --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,8040],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,8040]]]')
+echo "setting rendezvous server location to ${FDO_RV_DNS}:${rvHttpPort}"
+response=$(curl -s -w "%{http_code}" -D - --digest -u ${USER_AUTH} --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,"'"${rvHttpPort}"'"],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,"'"${rvHttpsPort}"'"]]]')
 code=$?
 httpCode=$(tail -n1 <<< "$response")
 chkHttp $code $httpCode "setting rendezvous server location"
