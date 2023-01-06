@@ -73,7 +73,7 @@ isDockerComposeAtLeast() {
 
 ###### MAIN CODE ######
 
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$HZN_FDO_SVC_URL" || -z "$FDO_DEV" ]]; then
+if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_DEV" ]]; then  #-z "$HZN_FDO_SVC_URL" ||
     echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, HZN_FDO_SVC_URL, FDO_DEV"
     exit 0
 fi
@@ -181,6 +181,7 @@ chk $? 'sed postgresql.conf'
 
 #MODIFY /etc/hosts to include host.docker.internal
 sed -i -e '1 a127.0.0.1 host.docker.internal' /etc/hosts
+sed -i -e '1 a127.0.0.1 localhost' /etc/hosts
 
 #then restart postgres service
 sudo systemctl restart postgresql
@@ -258,9 +259,9 @@ if [[ "$FDO_DEV" == '1' || "$FDO_DEV" == 'true' ]]; then
 
     #Use HZN_EXCHANGE_USER_AUTH for Owner services API password
     USER_AUTH=$HZN_EXCHANGE_USER_AUTH
-    removeWord="apiUser:"
+    removeWord="iamapikey:"
     api_password=${USER_AUTH//$removeWord/}
-    sed -i -e 's/api_user=.*/api_user=apiUser \napi_password='$api_password'/' $workingDir/$deviceBinaryDir/owner/service.env
+    sed -i -e 's/api_user=.*/api_user=iamapikey \napi_password='$api_password'/' $workingDir/$deviceBinaryDir/owner/service.env
     sed -i -e 's/user-cert/user_cert/' $workingDir/$deviceBinaryDir/owner/service.env
     sed -i -e 's/ssl-ca/ssl_ca/' $workingDir/$deviceBinaryDir/owner/service.env
     sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
@@ -304,8 +305,8 @@ else
 
 fi
 
-#Run all of the services
+#Run the service
 echo "Starting owner service..."
-#(cd owner && java -jar aio.jar)
+#(cd $workingDir/$deviceBinaryDir/owner && java -jar aio.jar)
 (cd $workingDir/$deviceBinaryDir/owner && docker-compose up --build)
 

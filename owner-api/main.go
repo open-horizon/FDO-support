@@ -11,10 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-
-	"github.com/google/uuid"
-	"github.com/open-horizon/SDO-support/ocs-api/data"
-	"github.com/open-horizon/SDO-support/ocs-api/outils"
+    dac "github.com/xinsnake/go-http-digest-auth-client"
+	"github.com/open-horizon/FDO-support/owner-api/outils"
 )
 
 /*
@@ -23,12 +21,14 @@ REST API server to authenticate user in order to use the FDO Owner Service (Owne
 
 // These global vars are necessary because the handler functions are not given any context
 var OcsDbDir string
-var GetOrgVoucherRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/vouchers/([^/]+)$`)
-var GetVoucherRegex = regexp.MustCompile(`^/api/vouchers/([^/]+)$`)       // backward compat
-var OrgVouchersRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/vouchers$`) // used for both GET and POST
-var OrgFDOVersionRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/version$`) // used for both GET and POST
-var OrgKeyRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/keys/([^/]+)$`)  // used for both GET and DELETE
-var OrgKeysRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/keys$`)         // used for both GET and POST
+var OrgFDOVersionRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/version$`) // used for GET
+var OrgFDOVouchersRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers$`) // used for both GET and POST
+var GetFDOVoucherRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers/([^/]+)$`)       // backward compat
+var OrgFDOKeyRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/certificate/([^/]+)$`) // used for GET , THIS NEEDS TO BE UPDATED IN ORDER TO RECOGNIZE KEY TYPE
+var OrgFDORedirectRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/redirect$`) // used for GET
+var GetFDOTo0Regex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/to0/([^/]+)$`)
+var OrgFDOResourceRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/resource/([^/]+)$`) //used for both GET and POST
+var OrgFDOServiceInfoRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/svi$`) // used for GET
 var ExchangeUrl string                                                    // the external url, that the device needs
 var ExchangeInternalUrl string                                            // will default to ExchangeUrl
 var ExchangeInternalCertPath string                                       // will default to /home/sdouser/ocs-api-dir/keys/sdoapi.crt if not set by EXCHANGE_INTERNAL_CERT
@@ -38,8 +38,6 @@ var CssUrl string                                                         // the
 var PkgsFrom string                                                       // the argument to the agent-install.sh -i flag
 var CfgFileFrom string                                                    // the argument to the agent-install.sh -k flag
 var KeyImportLock sync.RWMutex
-var OCS_API_VERSION = "development"
-var FDO_API_VERSION = "1.1.3"
 
 func main() {
 	if len(os.Args) < 3 {
@@ -114,25 +112,29 @@ func main() {
 // API route dispatcher
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("Handling %s ...", r.URL.Path)
-	if r.Method == "GET" && r.URL.Path == "/api/version" {
-		getVersionHandler(w, r)
-	} else if matches := OrgFDOVersionRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/version
+	if matches := OrgFDOVersionRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/version
       	getFdoVersionHandler(matches[1], w, r)
 	} else if r.Method == "GET" && r.URL.Path == "/api/fdo/version" {
 	    getFdoVersionHandler("", w, r)
-	} else if matches := GetOrgVoucherRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/vouchers/{device-id}
-		getVoucherHandler(matches[1], matches[2], w, r)
-	} else if matches := GetVoucherRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // backward compat: GET /api/vouchers/{device-id}
-		getVoucherHandler("", matches[1], w, r)
-	} else if matches := OrgVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/vouchers
-		getVouchersHandler(matches[1], w, r)
-	} else if r.Method == "GET" && r.URL.Path == "/api/vouchers" { // backward compat
-		getVouchersHandler("", w, r)
-	} else if matches := OrgVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/vouchers
-		postVoucherHandler(matches[1], w, r)
-	} else if r.Method == "POST" && (r.URL.Path == "/api/vouchers" || r.URL.Path == "/api/voucher") { // backward compat: /api/voucher is for until we update hzn voucher import
-		postVoucherHandler("", w, r)
-	} else {
+	} else if matches := OrgFDOKeyRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/certificate?alias=SECP256R1
+        getFdoPublicKeyHandler(matches[1], matches[2], w, r)
+	} else if matches := OrgFDOVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/vouchers
+        getFdoVouchersHandler(matches[1], w, r)
+    } else if matches := GetFDOVoucherRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid}
+        getFdoVoucherHandler(matches[1], matches[2], w, r)
+	} else if matches := OrgFDOVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/vouchers
+        postFdoVoucherHandler(matches[1], w, r)
+    } else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+        postFdoRedirectHandler(matches[1], w, r)
+    } else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
+        getFdoTo0Handler(matches[1], matches[2], w, r)
+    } else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 3 { // POST /api/orgs/{ord-id}/fdo/resource/{resourceFile}
+        postFdoResourceHandler(matches[1], matches[2], w, r)
+    } else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/resource/{resourceFile}
+        getFdoResourceHandler(matches[1], matches[2], w, r)
+    } else if matches := OrgFDOServiceInfoRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+        postFdoSVIHandler(matches[1], w, r)
+    } else {
 		http.Error(w, "Route "+r.URL.Path+" not found", http.StatusNotFound)
 	}
 	// Note: we used to also support a route that would allow an admin to change the config (i.e. run createConfigFiles()) w/o restarting
@@ -140,20 +142,6 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Route Handlers --------------------------------------------------------------------------------------------------
-
-//============= GET /api/version =============
-// Returns the ocs-api version (in plain text, not json)
-func getVersionHandler(w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("GET /api/version ...")
-
-	// Send voucher to client
-	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-	w.Header().Set("Content-Type", "text/plain")
-	_, err := w.Write([]byte(OCS_API_VERSION))
-	if err != nil {
-		outils.Error(err.Error())
-	}
-}
 
 //============= GET /api/fdo/version =============
 // Returns the fdo Owner Service version (in plain text, not json)
@@ -174,7 +162,12 @@ func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) 
     		return
     	}
 
-    resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
+    	fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    	if fdoOwnerURL == "" {
+        		log.Fatalln("HZN_FDO_SVC_URL")
+        	}
+
+    resp, err := http.Get(fdoOwnerURL + "/health")
     if err != nil {
         log.Fatalln(err)
     }
@@ -182,172 +175,87 @@ func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) 
        if err != nil {
           log.Fatalln(err)
        }
-    //Convert the body to type string
        sb := string(body)
        log.Printf(sb)
 
-	//
-// 	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-// 	w.Header().Set("Content-Type", "text/plain")
-// 	_, err := w.Write([]byte(FDO_API_VERSION))
-// 	if err != nil {
-// 		outils.Error(err.Error())
-// 	}
+     w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+     w.Header().Set("Content-Type", "text/plain")
+     outils.WriteResponse(http.StatusOK, w, body)
+
 }
 
+// ADD ROUTE TO GET PUBLIC KEY FROM OWNER Service
+//============= GET /api/orgs/{ord-id}/fdo/certificate?alias=SECP256R1 =============
+// Reads/returns owner service public keys
+func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/certificate?alias=%s ...", orgId)
+
+    var respBodyBytes []byte
+    var requestBodyBytes []byte
+    var fdoPublicKeyURL string
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	//check if publicKeyType is one of three options (SECP256R1, )
+
+    if (publicKeyType) != "SECP256R1" {
+    	http.Error(w, "Public key type must be SECP256R1", http.StatusBadRequest)
+    	return
+    }
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+            	if fdoOwnerURL == "" {
+                		log.Fatalln("HZN_FDO_SVC_URL")
+                	}
+    fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
+
+    //creds := cliutils.OrgAndCreds(org, userCreds)
+    	username, password := outils.GetOwnerServiceApiKey()
+    	method := http.MethodGet
+
+    	dr := dac.NewRequest(username, password, method, fdoPublicKeyURL, string(requestBodyBytes))
+    	resp, err := dr.Execute()
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+
+    	if resp.Body != nil {
+    		defer resp.Body.Close()
+    	}
+
+    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+    	sb := string(respBodyBytes)
+        log.Printf(sb)
+
+    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+        w.Header().Set("Content-Type", "text/plain")
+        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
 
 //IMPORT VOUCHER
-//============= POST /api/orgs/{ord-id}/vouchers and POST /api/vouchers =============
+//============= POST /api/orgs/{ord-id}/fdo/vouchers and POST /api/fdo/vouchers =============
+// Imports a voucher
+func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("POST /api/orgs/%s/fdo/vouchers ... ...", orgId)
 
-//GET LIST OF IMPORTED VOUCHERS
-//============= GET /api/orgs/{ord-id}/vouchers and GET /api/vouchers =============
-// Reads/returns all of the already imported vouchers
-// func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
-// 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers ...", orgId)
-//
-// 	// Determine the org id to use for the device, based on various inputs
-// 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
-// 	if httpErr != nil {
-// 		http.Error(w, httpErr.Error(), httpErr.Code)
-// 		return
-// 	}
-//
-// 	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
-// 		http.Error(w, httpErr.Error(), httpErr.Code)
-// 		return
-// 	} else if !authenticated {
-// 		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
-// 		return
-// 	}
-//
-// 	// Read the v1/devices/ directory in the db
-// 	vouchersDirName := OcsDbDir + "/v1/devices"
-// 	deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-// 	if err != nil {
-// 		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-//
-// 	vouchers := []string{}
-// 	for _, dir := range deviceDirs {
-// 		if dir.IsDir() {
-// 			// Look inside the device dir for orgid.txt to see if is part of the org we are listing
-// 			orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
-// 			if httpErr != nil {
-// 				http.Error(w, httpErr.Error(), httpErr.Code)
-// 				return
-// 			}
-// 			if orgidTxtStr == deviceOrgId { // this device is in our org
-// 				vouchers = append(vouchers, dir.Name())
-// 			}
-// 		}
-// 	}
-//
-// 	// Send vouchers to client
-// 	outils.WriteJsonResponse(http.StatusOK, w, vouchers)
-// }
-
-
-//GET A SPECIFIED VOUCHER
-
-
-//============= GET /api/orgs/{ord-id}/vouchers/{device-id} and GET /api/vouchers/{device-id} =============
-// Reads/returns an already imported voucher
-func getVoucherHandler(orgId, deviceUuid string, w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("GET /api/orgs/%s/vouchers/%s ...", orgId, deviceUuid)
-
-	// Determine the org id to use for the device, based on various inputs
-	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
-	if httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	}
-
-	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	} else if !authenticated {
-		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
-		return
-	}
-
-	// Read voucher.json from the db
-	voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/voucher.json"
-	voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
-	if err != nil {
-		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
-		return
-	}
-
-	// Confirm this voucher/device is in the client's org. Doing this check after getting the voucher, because if the
-	// voucher doesn't exist, we want them get that error, rather than that it is not in their org
-	orgidTxtStr, httpErr := getOrgidTxtStr(deviceUuid)
-	if httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	}
-	if orgidTxtStr != deviceOrgId { // this device is in our org
-		http.Error(w, "Device "+deviceUuid+" is not in org "+deviceOrgId, http.StatusForbidden)
-		return
-	}
-
-	// Send voucher to client
-	w.Header().Set("Content-Type", "application/json")
-	outils.WriteResponse(http.StatusOK, w, voucherBytes)
-}
-
-//============= GET /api/orgs/{ord-id}/vouchers and GET /api/vouchers =============
-// Reads/returns all of the already imported vouchers
-func getVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("GET /api/orgs/%s/vouchers ...", orgId)
-
-	// Determine the org id to use for the device, based on various inputs
-	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
-	if httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	}
-
-	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	} else if !authenticated {
-		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
-		return
-	}
-
-	// Read the v1/devices/ directory in the db
-	vouchersDirName := OcsDbDir + "/v1/devices"
-	deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-	if err != nil {
-		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	vouchers := []string{}
-	for _, dir := range deviceDirs {
-		if dir.IsDir() {
-			// Look inside the device dir for orgid.txt to see if is part of the org we are listing
-			orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
-			if httpErr != nil {
-				http.Error(w, httpErr.Error(), httpErr.Code)
-				return
-			}
-			if orgidTxtStr == deviceOrgId { // this device is in our org
-				vouchers = append(vouchers, dir.Name())
-			}
-		}
-	}
-
-	// Send vouchers to client
-	outils.WriteJsonResponse(http.StatusOK, w, vouchers)
-}
-
-//============= POST /api/orgs/{ord-id}/vouchers and POST /api/vouchers =============
-// Imports a voucher (can be called again for an existing voucher and will update/overwrite)
-func postVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("POST /api/orgs/%s/vouchers ...", orgId)
-	valuesDir := OcsDbDir + "/v1/values"
+	var respBodyBytes []byte
+    var bodyBytes []byte
+    var fdoVoucherURL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -365,113 +273,522 @@ func postVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if httpErr := outils.IsValidPostJson(r); httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	}
+	// Verify content type
+    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+    	http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
 
-	// Parse the request body
-	type OhStruct struct {
-		Guid []byte `json:"g"` // making it type []byte will automatically base64 decode the json value
-	}
-	type Voucher struct {
-		Oh OhStruct `json:"oh"`
-	}
+	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
+    	if err != nil {
+    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+    		return
+    	}
 
-	voucher := Voucher{}
-	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body in 2 forms (bytes and the Voucher struct), but can only read it once, so get it as bytes
-	if err != nil {
-		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if httpErr := outils.ParseJsonString(bodyBytes, &voucher); httpErr != nil {
-		http.Error(w, httpErr.Error(), httpErr.Code)
-		return
-	}
+    st := string(bodyBytes)
+    log.Printf(st)
 
-	// Get, decode, and convert the device uuid
-	uuid, err := uuid.FromBytes(voucher.Oh.Guid)
-	if err != nil {
-		http.Error(w, "Error converting GUID to UUID: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	outils.Verbose("POST /api/orgs/%/vouchers: device UUID: %s", deviceOrgId, uuid.String())
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+        	if fdoOwnerURL == "" {
+            		log.Fatalln("HZN_FDO_SVC_URL")
+            	}
+	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 
-	// Create the device directory in the OCS DB
-	deviceDir := OcsDbDir + "/v1/devices/" + uuid.String()
-	if err := os.MkdirAll(deviceDir, 0750); err != nil {
-		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+        	username, password := outils.GetOwnerServiceApiKey()
+        	method := http.MethodPost
 
-	// Remove the state.json file, in case this voucher was previously imported. This allows to0 to be run again (register it with RV)
-	fileName := deviceDir + "/state.json"
-	outils.Verbose("POST /api/orgs/%s/vouchers: removing %s (if exists) ...", deviceOrgId, fileName)
-	if err := os.RemoveAll(filepath.Clean(fileName)); err != nil { // RemoveAll does NOT return an error if fileName doesn't exist
-		http.Error(w, "could not remove "+fileName+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+        	dr := dac.NewRequest(username, password, method, fdoVoucherURL, string(bodyBytes))
+        	dr.Header.Set("content-Type", "text/plain")
+        	resp, err := dr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
 
-	// Put the voucher in the OCS DB
-	fileName = deviceDir + "/voucher.json"
-	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
-		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+        	if resp.Body != nil {
+            		defer resp.Body.Close()
+            	}
 
-	// Create the device download file (svi.json) and psi.json
-	fileName = deviceDir + "/svi.json"
-	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	sviJson1 := ""
-	if outils.PathExists(valuesDir + "/agent-install.crt") {
-		sviJson1 = data.SviJson1
-	}
-	sviJson := "[" + sviJson1 + data.SviJson2 + uuid.String() + data.SviJson3 + "]"
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(sviJson), 0644); err != nil {
-		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fileName = deviceDir + "/psi.json"
-	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(data.PsiJson), 0644); err != nil {
-		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+            respBodyBytes, err = ioutil.ReadAll(resp.Body)
+                	if err != nil {
+                		log.Fatalln(err)
+                	}
 
-	// Create orgid.txt file to identify what org this device/voucher is part of
-	fileName = deviceDir + "/orgid.txt"
-	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
-		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+        sb := string(respBodyBytes)
+        log.Printf(sb)
 
-	// Generate a node token
-	nodeToken, httpErr := outils.GenerateNodeToken()
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.Header().Set("Content-Type", "text/plain")
+    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= GET /api/orgs/{ord-id}/fdo/vouchers =============
+// Reads/returns all of the already imported vouchers
+func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/vouchers ...", orgId)
+
+    var respBodyBytes []byte
+    var requestBodyBytes []byte
+    var fdoVoucherURL string
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
 	if httpErr != nil {
 		http.Error(w, httpErr.Error(), httpErr.Code)
 		return
 	}
 
-	// Create exec file
-	// Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
-	execCmd := outils.MakeExecCmd(fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, uuid.String(), nodeToken, deviceOrgId, CfgFileFrom))
-	fileName = OcsDbDir + "/v1/values/" + uuid.String() + "_exec"
-	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
-		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
 		return
 	}
 
-	// Send response to client
-	respBody := map[string]interface{}{
-		"deviceUuid": uuid.String(),
-		"nodeToken":  nodeToken,
-	}
-	outils.WriteJsonResponse(http.StatusCreated, w, respBody)
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+            	if fdoOwnerURL == "" {
+                		log.Fatalln("HZN_FDO_SVC_URL")
+                	}
+    fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
+
+    //creds := cliutils.OrgAndCreds(org, userCreds)
+    	username, password := outils.GetOwnerServiceApiKey()
+    	method := http.MethodGet
+
+    	dr := dac.NewRequest(username, password, method, fdoVoucherURL, string(requestBodyBytes))
+    	resp, err := dr.Execute()
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+
+    	if resp.Body != nil {
+    		defer resp.Body.Close()
+    	}
+
+    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+    	sb := string(respBodyBytes)
+        log.Printf(sb)
+
+    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+        w.Header().Set("Content-Type", "text/plain")
+        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
+//GET A SPECIFIED VOUCHER
+//============= GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid} =============
+// Reads/returns a specific imported voucher
+func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/vouchers/%s ...", orgId)
+
+    var respBodyBytes []byte
+    var requestBodyBytes []byte
+    var fdoVoucherURL string
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+            	if fdoOwnerURL == "" {
+                		log.Fatalln("HZN_FDO_SVC_URL")
+                	}
+    fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers/" + deviceUuid
+
+    //creds := cliutils.OrgAndCreds(org, userCreds)
+    	username, password := outils.GetOwnerServiceApiKey()
+    	method := http.MethodGet
+
+    	dr := dac.NewRequest(username, password, method, fdoVoucherURL, string(requestBodyBytes))
+    	resp, err := dr.Execute()
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+
+    	if resp.Body != nil {
+    		defer resp.Body.Close()
+    	}
+
+    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+    	sb := string(respBodyBytes)
+        log.Printf(sb)
+
+    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+        w.Header().Set("Content-Type", "text/plain")
+        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= POST /api/orgs/{ord-id}/fdo/redirect =============
+// Configure the Owner Services TO2 address
+func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("POST /api/orgs/%s/fdo/redirect ... ...", orgId)
+
+	var respBodyBytes []byte
+    var bodyBytes []byte
+    var fdoTo2URL string
+
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	// Authenticate this user with the exchange
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify content type
+    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+    	http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
+
+	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
+    	if err != nil {
+    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+    		return
+    	}
+
+    st := string(bodyBytes)
+    log.Printf(st)
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+        	if fdoOwnerURL == "" {
+            		log.Fatalln("HZN_FDO_SVC_URL")
+            	}
+	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
+
+        	username, password := outils.GetOwnerServiceApiKey()
+        	method := http.MethodPost
+
+        	dr := dac.NewRequest(username, password, method, fdoTo2URL, string(bodyBytes))
+        	dr.Header.Set("content-Type", "text/plain")
+        	resp, err := dr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
+
+        	if resp.Body != nil {
+            		defer resp.Body.Close()
+            	}
+
+            respBodyBytes, err = ioutil.ReadAll(resp.Body)
+                	if err != nil {
+                		log.Fatalln(err)
+                	}
+
+        sb := string(respBodyBytes)
+        log.Printf(sb)
+
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.Header().Set("Content-Type", "text/plain")
+    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid} =============
+// Initiates TO0 from Owner service
+func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/to0/%s ...", orgId)
+
+    var respBodyBytes []byte
+    var requestBodyBytes []byte
+    var fdoTo0URL string
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+            	if fdoOwnerURL == "" {
+                		log.Fatalln("HZN_FDO_SVC_URL")
+                	}
+    fdoTo0URL = fdoOwnerURL + "/api/v1/to0/" + deviceUuid
+
+    	username, password := outils.GetOwnerServiceApiKey()
+    	method := http.MethodGet
+
+    	dr := dac.NewRequest(username, password, method, fdoTo0URL, string(requestBodyBytes))
+    	resp, err := dr.Execute()
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+
+    	if resp.Body != nil {
+    		defer resp.Body.Close()
+    	}
+
+    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+    	if err != nil {
+    		log.Fatalln(err)
+    	}
+    	sb := string(respBodyBytes)
+        log.Printf(sb)
+
+    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+        w.Header().Set("Content-Type", "text/plain")
+        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//IMPORT RESOURCE FILE (agent-install-wrapper.sh) TO OWNER DB FOR SERVICE INFO PACKAGE
+//============= POST /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
+// Imports a resource file to the DB in order to use for service info package
+func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("POST /api/orgs/%s/fdo/resource/%s ... ...", orgId)
+
+	var respBodyBytes []byte
+    var bodyBytes []byte
+    var fdoResourceURL string
+
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	// Authenticate this user with the exchange
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify content type
+    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+    	http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
+
+	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
+    	if err != nil {
+    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+    		return
+    	}
+
+    st := string(bodyBytes)
+    log.Printf(st)
+
+    //resourceFile in URL must = file name in request body
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+        	if fdoOwnerURL == "" {
+            		log.Fatalln("HZN_FDO_SVC_URL")
+            	}
+	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
+
+
+        	username, password := outils.GetOwnerServiceApiKey()
+        	method := http.MethodPost
+
+        	dr := dac.NewRequest(username, password, method, fdoResourceURL, string(bodyBytes))
+        	dr.Header.Set("content-Type", "text/plain")
+        	resp, err := dr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
+
+        	if resp.Body != nil {
+            		defer resp.Body.Close()
+            	}
+
+            respBodyBytes, err = ioutil.ReadAll(resp.Body)
+                	if err != nil {
+                		log.Fatalln(err)
+                	}
+
+        sb := string(respBodyBytes)
+        log.Printf(sb)
+
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.Header().Set("Content-Type", "text/plain")
+    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= GET /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
+// Gets a resource file that was imported to the DB in order to use for service info package
+func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/resource/%s ... ...", orgId)
+
+	var respBodyBytes []byte
+    var bodyBytes []byte
+    var fdoResourceURL string
+
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	// Authenticate this user with the exchange
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify content type
+    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+    	http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
+
+	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
+    	if err != nil {
+    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+    		return
+    	}
+
+    st := string(bodyBytes)
+    log.Printf(st)
+
+    //resourceFile in URL must = file name in request body
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+        	if fdoOwnerURL == "" {
+            		log.Fatalln("HZN_FDO_SVC_URL")
+            	}
+	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
+
+
+        	username, password := outils.GetOwnerServiceApiKey()
+        	method := http.MethodGet
+
+        	dr := dac.NewRequest(username, password, method, fdoResourceURL, string(bodyBytes))
+        	dr.Header.Set("content-Type", "text/plain")
+        	resp, err := dr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
+
+        	if resp.Body != nil {
+            		defer resp.Body.Close()
+            	}
+
+            respBodyBytes, err = ioutil.ReadAll(resp.Body)
+                	if err != nil {
+                		log.Fatalln(err)
+                	}
+
+        sb := string(respBodyBytes)
+        log.Printf(sb)
+
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.Header().Set("Content-Type", "text/plain")
+    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= POST /api/orgs/{ord-id}/fdo/svi =============
+// Uploads SVI instructions to SYSTEM_PACKAGE table in owner db.
+func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("POST /api/orgs/%s/fdo/svi ... ...", orgId)
+
+	var respBodyBytes []byte
+    var bodyBytes []byte
+    var fdoSVIURL string
+
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	// Authenticate this user with the exchange
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	// Verify content type
+    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+    	http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
+
+	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
+    	if err != nil {
+    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+    		return
+    	}
+
+    st := string(bodyBytes)
+    log.Printf(st)
+
+    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+        	if fdoOwnerURL == "" {
+            		log.Fatalln("HZN_FDO_SVC_URL")
+            	}
+	fdoSVIURL = fdoOwnerURL + "/api/v1/owner/redirect"
+
+        	username, password := outils.GetOwnerServiceApiKey()
+        	method := http.MethodPost
+
+        	dr := dac.NewRequest(username, password, method, fdoSVIURL, string(bodyBytes))
+        	dr.Header.Set("content-Type", "text/plain")
+        	resp, err := dr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
+
+        	if resp.Body != nil {
+            		defer resp.Body.Close()
+            	}
+
+            respBodyBytes, err = ioutil.ReadAll(resp.Body)
+                	if err != nil {
+                		log.Fatalln(err)
+                	}
+
+        sb := string(respBodyBytes)
+        log.Printf(sb)
+
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.Header().Set("Content-Type", "text/plain")
+    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
 
 //============= Non-Route Functions =============
 
@@ -632,3 +949,4 @@ func createConfigFiles() *outils.HttpError {
 
 	return nil
 }
+

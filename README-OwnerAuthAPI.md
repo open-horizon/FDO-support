@@ -32,7 +32,22 @@ The FDO owner services are packaged as a single docker container that can be run
    export HZN_EXCHANGE_USER_AUTH=iamapikey:<api-key>
    export FDO_DEV=true
    ```
+3. Get `owner-api/` directory and export the following environment variables:
 
+    ```bash
+    export HZN_FDO_API_URL=http://localhost:9008/api
+    export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
+    export HZN_EXCHANGE_URL=https://cp-console.ieam-roks-test2-70ea81cdef68a2eb78ece6d890b7dad3-0000.us-south.containers.appdomain.cloud/edge-exchange/v1
+    export HZN_FSS_CSSURL=https://cp-console.ieam-roks-test2-70ea81cdef68a2eb78ece6d890b7dad3-0000.us-south.containers.appdomain.cloud/edge-css
+    export EXCHANGE_INTERNAL_CERT=$(cat agent-install.crt)
+    export HZN_ORG_ID=<exchange-org>
+    ```
+4. Spin up the owner-api service:
+
+    ```bash
+    go run main.go 9008 ocs-db/
+    ```
+   
 #### <a name="verify-services"></a>Verify the FDO Owner Services API Endpoints
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
@@ -41,8 +56,9 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
 
    ```bash
    export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
-   export HZN_FDO_SVC_URL=<protocol>://<sdo-owner-svc-host>:8042
+   export HZN_FDO_API_URL=<protocol>://<sdo-owner-svc-host>:9008/api
    export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
+   export HZN_ORG_ID=<exchange-org>
    ```
 
 2. Query the Owner services health and version:
@@ -79,10 +95,10 @@ The sample script called `start-mfg.sh` downloads and extracts all necessary com
  ```bash
 curl -sSLO https://raw.githubusercontent.com/open-horizon/SDO-support/fdo1.0/sample-mfg/start-mfg.sh
 chmod +x start-mfg.sh
-export HZN_EXCHANGE_USER_AUTH=apiUser:<APIkey>
-export FDO_RV_URL=http://<fdo-rv-dns>:8040
-export HZN_FDO_SVC_URL=http://<fdo-owner-dns>:8042
-sudo -E ./start-mfg.sh
+export HZN_EXCHANGE_USER_AUTH=iamapikey:<APIkey>
+export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
+export HZN_FDO_API_URL=http://<fdo-owner-dns>:9008/api #This should be HZN_FDO_API_URL
+sudo -E ./start-mfg.sh 80 443
 ```
 
 All of the following steps interacting with localhost:8039 are automated by the `./start-mfh.sh` script
@@ -121,7 +137,7 @@ curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://l
 4. Given your device alias is the default "SECP256R1", run the following command to retrieve your public key:
 
 ```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET $HZN_FDO_SVC_URL/api/v1/certificate?alias=SECP256R1 --header 'Content-Type: text/plain' -o public_key.pem
+curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 && echo
 ```
 
 5. Now that you have the public key and serial number, you can use the following API call to retrieve your ownership voucher.
@@ -142,7 +158,7 @@ The ownership voucher created for the device in the previous step needs to be im
 2. Import the ownership voucher.
 
    ```bash
-   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST $HZN_FDO_SVC_URL/api/v1/owner/vouchers --header 'Content-Type: text/plain' --data-binary '@owner_voucher.txt'
+   curl -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @owner_voucher.txt $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/vouchers && echo
 
    hzn voucher import owner_voucher.txt
    ```
@@ -244,7 +260,7 @@ What to modify in our FDO support code when Intel releases a new version of FDO:
 
 - If new major or minor version:
     - update `.gitignore`
-    - create a new release in https://github.com/open-horizon/SDO-support/releases/ , and upload all device-related files/scripts.
+    - create a new release in https://github.com/open-horizon/FDO-support/releases/ , and upload all device-related files/scripts.
 - If a fix pack:
     - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/SDO-support/releases/
     - Update the title and description to indicate the new fix pack version

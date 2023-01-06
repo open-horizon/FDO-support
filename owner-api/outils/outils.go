@@ -57,6 +57,16 @@ func IsValidPostJson(r *http.Request) *HttpError {
 	return nil
 }
 
+// Verify that the request content type is json
+func IsValidPostPlainTxt(r *http.Request) *HttpError {
+	val, ok := r.Header["Content-Type"]
+
+	if !ok || len(val) == 0 || val[0] != "text/plain" {
+		return NewHttpError(http.StatusBadRequest, "Error: content-type must be text/plain)")
+	}
+	return nil
+}
+
 // Verify that the request content type is a file
 func IsValidPostBinary(r *http.Request) *HttpError {
 	val, ok := r.Header["Content-Type"]
@@ -583,3 +593,22 @@ func RunCmd(options RunCmdOpts, commandString string, args ...string) ([]byte, [
 	}
 	return stdoutBytes, stderrBytes, error(nil)
 }
+
+func GetOwnerServiceApiKey() (string, string) {
+	apiKey := os.Getenv("HZN_EXCHANGE_USER_AUTH")
+	if apiKey == "" {
+		log.Fatalln("HZN EXCHANGE AUTH NOT SET")
+	}
+
+	return SplitIdToken(apiKey)
+}
+func SplitIdToken(idToken string) (id, token string) {
+	parts := strings.SplitN(idToken, ":", 2)
+	id = parts[0] // SplitN will always at least return 1 element
+	token = ""
+	if len(parts) >= 2 {
+		token = parts[1]
+	}
+	return
+}
+
