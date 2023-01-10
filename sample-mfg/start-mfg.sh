@@ -35,8 +35,8 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     usage 0
 fi
 
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_API_URL" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, $HZN_FDO_API_URL"
+if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_API_URL" || -z "$HZN_ORG_ID" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_API_URL, HZN_ORG_ID"
     exit 0
 fi
 
@@ -306,7 +306,7 @@ alias=$(echo $response | grep -o '"alias":"[^"]*' | grep -o '[^"]*$')
 echo "alias:$alias"
 
 echo "getting device public key"
-httpCode=$(curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/certificate -o public_key.pem)
+httpCode=$(curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/certificate/$alias" -o public_key.pem)
 #httpCode=$(curl -k -s -w "%{http_code}" --digest -u ${USER_AUTH} --location --request GET "$HZN_FDO_SVC_URL/api/v1/certificate?alias=$alias" --header 'Content-Type: text/plain' -o public_key.pem)
 chkHttp $? $httpCode "getting device public key"
 

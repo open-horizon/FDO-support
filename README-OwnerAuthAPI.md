@@ -23,7 +23,7 @@ The FDO owner services are packaged as a single docker container that can be run
 
    ```bash
    curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/docker/start-fdo.sh
-   chmod +x start-fdo.sh
+   chmod +x start-fdo-owner-service.sh
    ```
 
 2. Run `sudo -E ./start-fdo.sh -h` to see the usage, and set all of the necessary environment variables. For example:
