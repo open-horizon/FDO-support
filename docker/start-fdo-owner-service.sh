@@ -14,12 +14,15 @@ ocsApiPort="${2:-${SDO_OCS_API_TLS_PORT:-${SDO_OCS_API_PORT:-$ocsApiPortDefault}
 workingDir='/home/fdouser'
 deviceBinaryDir='pri-fidoiot-v1.1.4'
 # These can be passed in via CLI args or env vars
+tmp_pass=`head -c 10 /dev/random | base64`
+random_pass="apiUser:"$tmp_pass
+FDO_API_PWD="${FDO_API_PWD:-$random_pass}"
 ownerApiPort="${1:-$ownerPortDefault}"  # precedence: arg, or tls port, or non-tls port, or default
 ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
 dbPort=${FDO_DB_PORT:-5432}
-FDO_OWNER_SVC_HOST=${FDO_OWNER_SVC_HOST:-$(hostname)}
+FDO_OCS_SVC_HOST=${FDO_OCS_SVC_HOST:-$(hostname)}
 #VERBOSE='true'   # let it be set by the container provisioner
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
 
@@ -90,18 +93,11 @@ if [[ ! -d $workingDir/$deviceBinaryDir ]]; then
   echo "$workingDir/$deviceBinaryDir DOES NOT EXIST, Run ./getFDO.sh for latest builds"
 fi
 
-##MODIFY postgresql.conf and pg_hba.conf to allow Postgresdb to listen -
-#sed -i -e 's/# TYPE  DATABASE        USER            ADDRESS                 METHOD/# TYPE  DATABASE        USER            ADDRESS                 METHOD\nhost    all             all             0.0.0.0\/0               md5/' /etc/postgresql/*/main/pg_hba.conf
-#chk $? 'sed pg_hba.conf'
-#
-#sed -i -e "s/#listen_addresses =.*/listen_addresses = '*' /" /etc/postgresql/*/main/postgresql.conf
-#chk $? 'sed postgresql.conf'
-
-#MODIFY /etc/hosts to include host.docker.internal
-#sed -i -e '1 a127.0.0.1 host.docker.internal' /etc/hosts
-#sed -i -e '1 a127.0.0.1 localhost' /etc/hosts
-
-#then restart postgres service
+if [[ ${FDO_API_PWD} != *"apiUser:"* || $FDO_API_PWD == *$'\n'* || $FDO_API_PWD == *'|'* ]]; then
+    # newlines and vertical bars aren't allowed in the pw, because they cause the sed cmds below to fail
+    echo "Error: FDO_API_PWD must include "apiUser:" as a prefix and not contain newlines or '|'"
+    exit 1
+fi
 
 echo "Using ports: Owner Service: $ownerPort"
 
@@ -123,6 +119,7 @@ echo "Running key generation script..."
 #override auto-generated DB username and password
 sed -i -e 's/db_user=.*/db_user=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
 sed -i -e 's/db_password=.*/db_password=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
+#db user and password should be a variable
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
@@ -133,7 +130,7 @@ chk $? 'sed hibernate.cfg.xml driver_class'
 sed -i -e 's/<transport-guarantee>CONFIDENTIAL<\/transport-guarantee>/<transport-guarantee>NONE<\/transport-guarantee>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
 sed -i -e 's/<auth-method>CLIENT-CERT<\/auth-method>/<auth-method>DIGEST<\/auth-method>\n<realm-name>Digest Authentication<\/realm-name>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
 
-sed -i -e "s/jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)/jdbc:postgresql:\/\/${FDO_OWNER_SVC_HOST}:${dbPort}\/fdo/" $workingDir/$deviceBinaryDir/owner/service.yml
+sed -i -e "s/jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)/jdbc:postgresql:\/\/${FDO_OCS_SVC_HOST}:${dbPort}\/fdo/" $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml connection url'
 sed -i -e 's/org.hibernate.dialect.MariaDBDialect/org.hibernate.dialect.PostgreSQLDialect/' $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml dialect'

@@ -35,15 +35,15 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     usage 0
 fi
 
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_API_URL" || -z "$HZN_ORG_ID" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_API_URL, HZN_ORG_ID"
+if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" || -z "$HZN_ORG_ID" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL, HZN_ORG_ID"
     exit 0
 fi
 
 
 deviceBinaryDir='pri-fidoiot-v1.1.1'   # the place we will unpack sdo_device_binaries_1.10_linux_x64.tar.gz to
-rvHttpPort=${1:-8040}
-rvHttpsPort=${2:-8040} #Will change to 8041 when https is enabled
+rvHttpPort=${1:-80}
+rvHttpsPort=${2:-443} #Will change to 8041 when https is enabled
 rvUrl="$FDO_RV_URL"   # the external rv url that the device should reach it at
 
 #If the passed argument is a file, save the file directory path
@@ -306,7 +306,7 @@ alias=$(echo $response | grep -o '"alias":"[^"]*' | grep -o '[^"]*$')
 echo "alias:$alias"
 
 echo "getting device public key"
-httpCode=$(curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/certificate/$alias" -o public_key.pem)
+httpCode=$(curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/certificate/$alias" -o public_key.pem)
 #httpCode=$(curl -k -s -w "%{http_code}" --digest -u ${USER_AUTH} --location --request GET "$HZN_FDO_SVC_URL/api/v1/certificate?alias=$alias" --header 'Content-Type: text/plain' -o public_key.pem)
 chkHttp $? $httpCode "getting device public key"
 

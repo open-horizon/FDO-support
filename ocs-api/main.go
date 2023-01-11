@@ -162,9 +162,9 @@ func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) 
     		return
     	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
     if fdoOwnerURL == "" {
-        log.Fatalln("HZN_FDO_SVC_URL is not set")
+        log.Fatalln("HZN_FDO_API_URL is not set")
     }
 
     resp, err := http.Get(fdoOwnerURL + "/health")
@@ -181,11 +181,10 @@ func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) 
 
 }
 
-// ADD ROUTE TO GET PUBLIC KEY FROM OWNER Service
-//============= GET /api/orgs/{ord-id}/fdo/certificate?alias=SECP256R1 =============
-// Reads/returns owner service public keys
+//============= GET /api/orgs/{ord-id}/fdo/certificate/<alias> =============
+// Reads/returns owner service public keys based off device alias
 func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("GET /api/orgs/%s/fdo/certificate?alias=%s ...", orgId)
+	outils.Verbose("GET /api/orgs/%s/fdo/certificate/%s ...", orgId)
 
     var respBodyBytes []byte
     var requestBodyBytes []byte
@@ -205,16 +204,15 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 		return
 	}
 
-	//check if publicKeyType is one of three options (SECP256R1, )
 
-    if (publicKeyType) != "SECP256R1" {
-    	http.Error(w, "Public key type must be SECP256R1", http.StatusBadRequest)
+    if (publicKeyType) != "SECP256R1" && (publicKeyType) != "SECP384R1" && (publicKeyType) != "RSAPKCS3072" && (publicKeyType) != "RSAPKCS2048" && (publicKeyType) != "RSA2048RESTR" {
+    	http.Error(w, "Public key type must be one of these supported alias': SECP256R1, SECP384R1, RSAPKCS3072, RSAPKCS2048, RSA2048RESTR", http.StatusBadRequest)
     	return
-    }
+}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
             	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_SVC_URL")
+                		log.Fatalln("HZN_FDO_API_URL is not set")
                 	}
     fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
 
@@ -286,9 +284,9 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
     st := string(bodyBytes)
     log.Printf(st)
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_SVC_URL")
+            		log.Fatalln("HZN_FDO_API_URL is not set")
             	}
 	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 
@@ -342,9 +340,9 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
             	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_SVC_URL")
+                		log.Fatalln("HZN_FDO_API_URL is not set")
                 	}
     fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 
@@ -398,9 +396,9 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
             	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_SVC_URL")
+                		log.Fatalln("HZN_FDO_API_URL is not set")
                 	}
     fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers/" + deviceUuid
 
@@ -471,9 +469,9 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
     st := string(bodyBytes)
     log.Printf(st)
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_SVC_URL")
+            		log.Fatalln("HZN_FDO_API_URL is not set")
             	}
 	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
 
@@ -527,9 +525,9 @@ func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r 
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
             	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_SVC_URL")
+                		log.Fatalln("HZN_FDO_API_URL is not set")
                 	}
     fdoTo0URL = fdoOwnerURL + "/api/v1/to0/" + deviceUuid
 
@@ -602,9 +600,9 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 
     //resourceFile in URL must = file name in request body
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_SVC_URL")
+            		log.Fatalln("HZN_FDO_API_URL is not set")
             	}
 	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
 
@@ -679,9 +677,9 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
 
     //resourceFile in URL must = file name in request body
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_SVC_URL")
+            		log.Fatalln("HZN_FDO_API_URL is not set")
             	}
 	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
 
@@ -754,11 +752,11 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
     st := string(bodyBytes)
     log.Printf(st)
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_SVC_URL")
+    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_SVC_URL")
+            		log.Fatalln("HZN_FDO_API_URL is not set")
             	}
-	fdoSVIURL = fdoOwnerURL + "/api/v1/owner/redirect"
+	fdoSVIURL = fdoOwnerURL + "/api/v1/owner/svi"
 
         	username, password := outils.GetOwnerServiceApiKey()
         	method := http.MethodPost

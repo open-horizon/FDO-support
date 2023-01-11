@@ -25,13 +25,13 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0
 
 
 # Note: if ENV variables are used in this Dockerfile, they can not effectively be overridden by docker run
-# WORKDIR: the working dir for the 2nd half of this file, and what all of the services will run from, FDO_OCS_DB_PATH: the ocs service read this. FDO_OCS_API_PORT and VERBOSE can be overridden on docker run.
+# WORKDIR: the working dir for the 2nd half of this file, and what all of the services will run from, FDO_OCS_DB_PATH: the ocs service read this. FDO_OCS_SVC_PORT and VERBOSE can be overridden on docker run.
 ENV WORKDIR=/home/fdouser
 ENV FDO_OCS_DB_PATH=$WORKDIR/ocs/config/db
 # These env vars are only used at runtime (by start-fdo-owner-services.sh), so can be overridden by docker run
-ENV FDO_OPS_PORT=8042   FDO_OCS_API_PORT=9008   VERBOSE=true
+ENV FDO_OPS_PORT=8042   FDO_OCS_SVC_PORT=9008   VERBOSE=true
 ENV FDO_OPS_EXTERNAL_PORT=$FDO_OPS_PORT
-ENV FDO_OCS_API_TLS_PORT=$FDO_OCS_API_PORT
+ENV FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_PORT
 
 # Working during during the installations
 WORKDIR /root
