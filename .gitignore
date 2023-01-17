@@ -1,15 +1,15 @@
-/ocs-api/ocs-db/
-/ocs-api/linux/ocs-api
-/agent-install.crt
+./ocs-api/ocs-db/
+./ocs-api/linux/ocs-api
+./agent-install.crt
 
 # Where the SDO files are downloaded to
-/sdo/
+./sdo/
 # Where the FDO files are downloaded to 
-/fdo/
+./fdo/
 #todo: remove
 
-/vendor/
-/.vscode/
+./vendor/
+.vscode/
 
 # Intellij GoLand files
-/.idea/
+.idea/
