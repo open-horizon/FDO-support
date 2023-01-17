@@ -3,7 +3,7 @@ SHELL ?= /bin/bash -e
 export VERSION ?= 1.0
 # used by sample-mfg/Makefile. Needs to match what is in fdo/supply-chain-tools-v<version>/docker_manufacturer/docker-compose.yml
 FDO_VERSION ?= 1.1.3
-STABLE_VERSION ?= 1.0
+STABLE_VERSION ?= 1.0.0
 
 #todo: add BUILD_NUMBER like in anax/Makefile
 
