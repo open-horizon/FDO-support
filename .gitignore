@@ -1,7 +1,6 @@
-/ocs-api/ocs-api
-/ocs-api/linux/
-/owner-api/ocs-db/
-/owner-api/agent-install.crt
+/ocs-api/ocs-db/
+/ocs-api/linux/ocs-api
+/agent-install.crt
 
 # Where the SDO files are downloaded to
 /sdo/

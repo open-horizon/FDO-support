@@ -18,7 +18,7 @@ Arguments:
 
 Required Environment Variables:
   FDO_RV_URL: usually the development RV server running with the owner services. To use the production RV service, set to http://sdo.lfedge.iol.unh.edu:80
-  HZN_EXCHANGE_USER_AUTH: API password for manufacturing service APIs
+  HZN_EXCHANGE_USER_AUTH: API password for service APIs
   HZN_FDO_SVC_URL: Owner Service url.
 
 Optional Environment Variables:
@@ -35,15 +35,15 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     usage 0
 fi
 
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL"
+if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" || -z "$HZN_ORG_ID" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL, HZN_ORG_ID"
     exit 0
 fi
 
 
 deviceBinaryDir='pri-fidoiot-v1.1.1'   # the place we will unpack sdo_device_binaries_1.10_linux_x64.tar.gz to
-rvHttpPort=${1:-8040}
-rvHttpsPort=${2:-8040} #Will change to 8041 when https is enabled
+rvHttpPort=${1:-80}
+rvHttpsPort=${2:-443} #Will change to 8041 when https is enabled
 rvUrl="$FDO_RV_URL"   # the external rv url that the device should reach it at
 
 #If the passed argument is a file, save the file directory path
@@ -255,17 +255,17 @@ echo "Running key generation script..."
 (cd $PWD/$deviceBinaryDir/scripts && cp -r creds/. ../)
 
 #Configurations
-#sed -i -e '/network_mode: host/ s/./#&/' $PWD/$deviceBinaryDir/manufacturer/docker-compose.yml
-#chk $? 'sed manufacturer/docker-compose.yml'
 #Device/service.yml configuration to point to local manufacturing port
 sed -i -e 's/di-url:.*/di-url: http:\/\/localhost:8039/' $PWD/$deviceBinaryDir/device/service.yml
 chk $? 'sed device/service.yml'
+sed -i -e 's/user_name:.*/user_name: $(api_user)/' $PWD/$deviceBinaryDir/manufacturer/service.yml
+chk $? 'sed manufacturer/service.yml'
 
 
 USER_AUTH=$HZN_EXCHANGE_USER_AUTH
-removeWord="apiUser:"
+removeWord="iamapikey:"
 api_password=${USER_AUTH//$removeWord/}
-sed -i -e 's/api_password=.*/api_password='$api_password'/' $PWD/$deviceBinaryDir/manufacturer/service.env
+sed -i -e 's/api_password=.*/api_password='$api_password' \napi_user=iamapikey/' $PWD/$deviceBinaryDir/manufacturer/service.env
 
 echo "Starting manufacturer service..."
 sudo chmod 666 /var/run/docker.sock
@@ -306,7 +306,8 @@ alias=$(echo $response | grep -o '"alias":"[^"]*' | grep -o '[^"]*$')
 echo "alias:$alias"
 
 echo "getting device public key"
-httpCode=$(curl -k -s -w "%{http_code}" --digest -u ${USER_AUTH} --location --request GET "$HZN_FDO_SVC_URL/api/v1/certificate?alias=$alias" --header 'Content-Type: text/plain' -o public_key.pem)
+httpCode=$(curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/certificate/$alias" -o public_key.pem)
+#httpCode=$(curl -k -s -w "%{http_code}" --digest -u ${USER_AUTH} --location --request GET "$HZN_FDO_SVC_URL/api/v1/certificate?alias=$alias" --header 'Content-Type: text/plain' -o public_key.pem)
 chkHttp $? $httpCode "getting device public key"
 
 echo "getting ownership voucher"
