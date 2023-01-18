@@ -82,7 +82,6 @@ isDockerComposeAtLeast() {
 }
 
 ###### MAIN CODE ######
-
 if [[ -z "$FDO_API_PWD" || -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" ]]; then  #-z "$HZN_FDO_SVC_URL" ||
     echo "Error: These environment variable must be set to access Owner services APIs: FDO_API_PWD, HZN_EXCHANGE_URL, HZN_FSS_CSSURL"
     exit 0
@@ -97,6 +96,11 @@ if [[ ${FDO_API_PWD} != *"apiUser:"* || $FDO_API_PWD == *$'\n'* || $FDO_API_PWD 
     # newlines and vertical bars aren't allowed in the pw, because they cause the sed cmds below to fail
     echo "Error: FDO_API_PWD must include "apiUser:" as a prefix and not contain newlines or '|'"
     exit 1
+fi
+
+if [[ -z "$FDO_DB_USER" || -z "$FDO_DB_PASSWORD" || -z "$FDO_DB_URL"]]; then
+    echo "Error: You must set the database environment variables FDO_DB_USER, FDO_DB_PASSWORD, and FDO_DB_URL"
+    exit 0
 fi
 
 echo "Using ports: Owner Service: $ownerPort"
