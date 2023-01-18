@@ -116,10 +116,9 @@ echo "Running key generation script..."
 (cd $workingDir/$deviceBinaryDir/scripts && chmod 777 secrets/server-key.pem)
 (cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
 
-#override auto-generated DB username and password
-sed -i -e 's/db_user=.*/db_user=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
-sed -i -e 's/db_password=.*/db_password=fdo/' $workingDir/$deviceBinaryDir/owner/service.env
-#db user and password should be a variable
+#override auto-generated DB username and password with variables
+sed -i -e 's/db_user=.*/db_user=${FDO_DB_USER}/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/db_password=.*/db_password=${FDO_DB_PASSWORD}/' $workingDir/$deviceBinaryDir/owner/service.env
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
@@ -130,10 +129,12 @@ chk $? 'sed hibernate.cfg.xml driver_class'
 sed -i -e 's/<transport-guarantee>CONFIDENTIAL<\/transport-guarantee>/<transport-guarantee>NONE<\/transport-guarantee>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
 sed -i -e 's/<auth-method>CLIENT-CERT<\/auth-method>/<auth-method>DIGEST<\/auth-method>\n<realm-name>Digest Authentication<\/realm-name>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
 
-sed -i -e "s/jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)/jdbc:postgresql:\/\/${FDO_OCS_SVC_HOST}:${dbPort}\/fdo/" $workingDir/$deviceBinaryDir/owner/service.yml
+#override JDBC URL. This should be a Postgres DB URL because we default to that dialect below
+sed -i -e "s/jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)/${FDO_DB_URL}/" $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml connection url'
 sed -i -e 's/org.hibernate.dialect.MariaDBDialect/org.hibernate.dialect.PostgreSQLDialect/' $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml dialect'
+
 sed -i -e 's/server.api.user:.*/server.api.user: apiUser/' $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml server.api.user'
 sed -i -e 's/server.api.password: "null"/server.api.password: $(api_password)/' $workingDir/$deviceBinaryDir/owner/service.yml
@@ -145,41 +146,38 @@ chk $? 'sed owner/service.yml secrets'
 sed -i -e '/- db_password/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml db_password'
 
-
-
-
-      #need java installed in order to generate the SSL keystore for HTTPS
-      # If java 11 isn't installed, do that
-      if java -version 2>&1 | grep version | grep -q 11.; then
-          echo "Found java 11"
-      else
-          echo "Java 11 not found, installing it..."
-          apt-get update && apt-get install -y openjdk-11-jre-headless
-          chk $? 'installing java 11'
-      fi
+#need java installed in order to generate the SSL keystore for HTTPS
+# If java 11 isn't installed, do that
+if java -version 2>&1 | grep version | grep -q 11.; then
+    echo "Found java 11"
+else
+    echo "Java 11 not found, installing it..."
+    apt-get update && apt-get install -y openjdk-11-jre-headless
+    chk $? 'installing java 11'
+fi
 
 #    echo "Using local testing configuration, because FDO_DEV=$FDO_DEV"
 #    #Configuring Owner services for development, If you are running the local
 #    #development RV server, then you must disable the port numbers for rv/docker-compose.yml & owner/docker-compose.yml -- DO NOT COMMENT OUT
 
 
-    #Disabling https
-    sed -i -e '/- org.fidoalliance.fdo.protocol.StandardOwnerSchemeSupplier/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
-    chk $? 'sed owner/service.yml'
-    sed -i -e 's/#- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/' $workingDir/$deviceBinaryDir/owner/service.yml
-    chk $? 'sed owner/service.yml'
+#Disabling https
+sed -i -e '/- org.fidoalliance.fdo.protocol.StandardOwnerSchemeSupplier/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml'
+sed -i -e 's/#- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/- org.fidoalliance.fdo.protocol.HttpOwnerSchemeSupplier/' $workingDir/$deviceBinaryDir/owner/service.yml
+chk $? 'sed owner/service.yml'
 
 
-    #Use internally set PW for Owner services API password
-    USER_AUTH=$FDO_API_PWD
-    removeWord="apiUser:"
-    api_password=${USER_AUTH//$removeWord/}
-    sed -i -e 's/api_user=.*/api_user=apiUser \napi_password='$api_password'/' $workingDir/$deviceBinaryDir/owner/service.env
-    sed -i -e 's/user-cert/user_cert/' $workingDir/$deviceBinaryDir/owner/service.env
-    sed -i -e 's/ssl-ca/ssl_ca/' $workingDir/$deviceBinaryDir/owner/service.env
-    sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
-    #Delete owner and rv service db files here if re-running in a test environment
-    #rm $workingDir/$deviceBinaryDir/owner/app-data/emdb.mv.db && $workingDir/$deviceBinaryDir/rv/app-data/emdb.mv.db
+#Use internally set PW for Owner services API password
+USER_AUTH=$FDO_API_PWD
+removeWord="apiUser:"
+api_password=${USER_AUTH//$removeWord/}
+sed -i -e 's/api_user=.*/api_user=apiUser \napi_password='$api_password'/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/user-cert/user_cert/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/ssl-ca/ssl_ca/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
+#Delete owner and rv service db files here if re-running in a test environment
+#rm $workingDir/$deviceBinaryDir/owner/app-data/emdb.mv.db && $workingDir/$deviceBinaryDir/rv/app-data/emdb.mv.db
 
 
 
