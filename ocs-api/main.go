@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,6 +46,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	var fdoTo2URL string
+    var to2Body string
+
 	// Process cmd line args and env vars
 	port := os.Args[1]
 	OcsDbDir = os.Args[2]
@@ -75,6 +79,33 @@ func main() {
 
 	//http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/api/", apiHandler)
+
+	 // Set To2 Address on start up in FDO Owner Services
+         fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+         if fdoOwnerURL == "" {
+            log.Fatalln("HZN_FDO_API_URL is not set")
+         }
+         u, err := url.Parse(fdoOwnerURL)
+         if err != nil {
+            log.Fatal(err)
+         }
+         fmt.Println("Setting To2 Address as: " + u.Hostname())
+         to2Body = (`[[null,"` + u.Hostname() + `",8042,3]]`)
+         fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
+         username, password := outils.GetOwnerServiceApiKey()
+         method := http.MethodPost
+
+         dr := dac.NewRequest(username, password, method, fdoTo2URL, string(to2Body))
+         dr.Header.Set("content-Type", "text/plain")
+         resp, err := dr.Execute()
+         if err != nil {
+            log.Fatalln(err)
+         }
+
+         if resp.Body != nil {
+            defer resp.Body.Close()
+         }
+
 
 	// Get the cert to use when talking to the exchange for authentication, if set
 	if outils.IsEnvVarSet("EXCHANGE_INTERNAL_CERT") {
@@ -281,9 +312,6 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
     		return
     	}
 
-    st := string(bodyBytes)
-    log.Printf(st)
-
     fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
             		log.Fatalln("HZN_FDO_API_URL is not set")
@@ -309,12 +337,60 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
                 		log.Fatalln(err)
                 	}
 
-        sb := string(respBodyBytes)
-        log.Printf(sb)
+//string device UUID
+    deviceUuid := string(respBodyBytes)
+    outils.Verbose("POST /api/orgs/%s/fdo/vouchers: device UUID: %s", deviceOrgId, deviceUuid)
 
-	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    // Create the device directory in the OCS DB
+    deviceDir := OcsDbDir + "/v1/devices/" + deviceUuid
+    if err := os.MkdirAll(deviceDir, 0750); err != nil {
+        http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Put the voucher in the OCS DB
+    fileName := deviceDir + "/ownership_voucher.txt"
+    outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
+    if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
+        http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Create orgid.txt file to identify what org this device/voucher is part of
+    fileName = deviceDir + "/orgid.txt"
+    outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
+    if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
+        http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Generate a node token
+    nodeToken, httpErr := outils.GenerateNodeToken()
+    if httpErr != nil {
+        http.Error(w, httpErr.Error(), httpErr.Code)
+        return
+    }
+
+//      // Create exec file
+//      // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
+//     execCmd := outils.MakeExecCmd(fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom))
+//     fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
+//     outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
+//     if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
+//      http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+//      return
+//     }
+
+    // Send response to client
+    respBody := map[string]interface{}{
+                "deviceUuid": deviceUuid,
+                "nodeToken":  nodeToken,
+    }
+
+        w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
     w.Header().Set("Content-Type", "text/plain")
-    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+    outils.WriteJsonResponse(http.StatusOK, w, respBody)
+
 }
 
 //============= GET /api/orgs/{ord-id}/fdo/vouchers =============
@@ -366,10 +442,33 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
     	}
     	sb := string(respBodyBytes)
         log.Printf(sb)
+ // Read the v1/devices/ directory in the db
+                vouchersDirName := OcsDbDir + "/v1/devices"
+                deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+                if err != nil {
+                        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
+                        return
+                }
 
-    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+                vouchers := []string{}
+                for _, dir := range deviceDirs {
+                        if dir.IsDir() {
+                                // Look inside the device dir for orgid.txt to see if is part of the org we are listing
+                                orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
+                                if httpErr != nil {
+                                        http.Error(w, httpErr.Error(), httpErr.Code)
+                                        return
+                                }
+                                if orgidTxtStr == deviceOrgId { // this device is in our org
+                                        vouchers = append(vouchers, dir.Name())
+                                }
+                        }
+                }
+
+        w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
         w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+        outils.WriteJsonResponse(http.StatusOK, w, vouchers)
+
 }
 
 //GET A SPECIFIED VOUCHER
@@ -920,25 +1019,25 @@ func createConfigFiles() *outils.HttpError {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 
-	PkgsFrom = os.Getenv("SDO_GET_PKGS_FROM")
+	PkgsFrom = os.Getenv("FDO_GET_PKGS_FROM")
 	if PkgsFrom == "" {
 		PkgsFrom = "https://github.com/open-horizon/anax/releases/latest/download" // default
 	}
 	fmt.Printf("Will be configuring devices to get horizon packages from %s\n", PkgsFrom)
 	// try to ensure they didn't give us a bad value for SDO_GET_PKGS_FROM
 	if !strings.HasPrefix(PkgsFrom, "https://github.com/open-horizon/anax/releases") && !strings.HasPrefix(PkgsFrom, "css:") {
-		outils.Warning("Unrecognized value specified for SDO_GET_PKGS_FROM: %s", PkgsFrom)
+		outils.Warning("Unrecognized value specified for FDO_GET_PKGS_FROM: %s", PkgsFrom)
 		// continue, because maybe this is a value for the agent-install.sh -i flag that we don't know about yet
 	}
 
-	CfgFileFrom = os.Getenv("SDO_GET_CFG_FILE_FROM")
+	CfgFileFrom = os.Getenv("FDO_GET_CFG_FILE_FROM")
 	if CfgFileFrom == "" {
 		CfgFileFrom = "css:" // default
 	}
 	fmt.Printf("Will be configuring devices to get agent-install.cfg from %s\n", CfgFileFrom)
-	// try to ensure they didn't give us a bad value for SDO_GET_CFG_FILE_FROM
+	// try to ensure they didn't give us a bad value for FDO_GET_CFG_FILE_FROM
 	if !strings.HasPrefix(CfgFileFrom, "agent-install.cfg") && !strings.HasPrefix(CfgFileFrom, "css:") {
-		outils.Warning("Unrecognized value specified for SDO_GET_CFG_FILE_FROM: %s", CfgFileFrom)
+		outils.Warning("Unrecognized value specified for FDO_GET_CFG_FILE_FROM: %s", CfgFileFrom)
 		// continue, because maybe this is a value for the agent-install.sh -i flag that we don't know about yet
 	}
 
