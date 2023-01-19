@@ -337,7 +337,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
                 		log.Fatalln(err)
                 	}
 
-//string device UUID
+    //string device UUID
     deviceUuid := string(respBodyBytes)
     outils.Verbose("POST /api/orgs/%s/fdo/vouchers: device UUID: %s", deviceOrgId, deviceUuid)
 
@@ -371,6 +371,60 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
         return
     }
 
+    deviceAndNodeToken := deviceUuid + ":" + nodeToken
+    // Post device specified agent-install-wrapper in FDO Owner Services
+
+    valuesDir := OcsDbDir + "/v1/values"
+    fileName = valuesDir + "/agent-install-wrapper.sh"
+    fmt.Println("Setting SVI package: " + fileName)
+    wrapperFile, err := ioutil.ReadFile(fileName)
+    if err != nil {
+        log.Fatalln(err)
+    }
+    wrapperResource :="agent-install-wrapper-" + deviceUuid + ".sh"
+	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
+    fmt.Println("URL for SVI package: " + fdoResourceURL)
+
+        	pr := dac.NewRequest(username, password, method, fdoResourceURL, string(wrapperFile))
+        	pr.Header.Set("content-Type", "text/plain")
+        	newResp, err := pr.Execute()
+        	if err != nil {
+        		log.Fatalln(err)
+        	}
+
+             if newResp.Body != nil {
+                defer newResp.Body.Close()
+             }
+
+    // Set SVI and agent-install-wrapper.sh arguments in FDO Owner Services
+
+             sviBody := (`[{"filedesc" : "agent-install-wrapper.sh","resource" : "` + wrapperResource + `"},
+             {"exec" : ["bash","agent-install-wrapper.sh","-i","https://github.com/open-horizon/anax/releases/latest/download",
+             "-a","` + deviceAndNodeToken + `","-O","` + deviceOrgId + `","-k","css:"] }]`)
+
+             fmt.Println("SVI request body: " + sviBody)
+
+             fdoSVIURL := fdoOwnerURL + "/api/v1/owner/svi"
+
+             lr := dac.NewRequest(username, password, method, fdoSVIURL, string(sviBody))
+             lr.Header.Set("content-Type", "text/plain")
+             postResponse, err := lr.Execute()
+                     	if err != nil {
+                     		log.Fatalln(err)
+                     	}
+
+                     	if postResponse.Body != nil {
+                         		defer postResponse.Body.Close()
+                         	}
+
+                         respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
+                             	if err != nil {
+                             		log.Fatalln(err)
+                             	}
+
+                     lk := string(respBodyBytes)
+                     log.Printf(lk)
+
 //      // Create exec file
 //      // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
 //     execCmd := outils.MakeExecCmd(fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom))
@@ -383,11 +437,11 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
     // Send response to client
     respBody := map[string]interface{}{
-                "deviceUuid": deviceUuid,
+                "deviceGuid": deviceUuid,
                 "nodeToken":  nodeToken,
     }
 
-        w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+    w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
     w.Header().Set("Content-Type", "text/plain")
     outils.WriteJsonResponse(http.StatusOK, w, respBody)
 
@@ -848,8 +902,6 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
     		return
     	}
 
-    st := string(bodyBytes)
-    log.Printf(st)
 
     fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
         	if fdoOwnerURL == "" {
