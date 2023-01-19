@@ -98,7 +98,7 @@ if [[ ${FDO_API_PWD} != *"apiUser:"* || $FDO_API_PWD == *$'\n'* || $FDO_API_PWD 
     exit 1
 fi
 
-if [[ -z "$FDO_DB_USER" || -z "$FDO_DB_PASSWORD" || -z "$FDO_DB_URL"]]; then
+if [[ -z "$FDO_DB_USER" || -z "$FDO_DB_PASSWORD" || -z "$FDO_DB_URL" ]]; then
     echo "Error: You must set the database environment variables FDO_DB_USER, FDO_DB_PASSWORD, and FDO_DB_URL"
     exit 0
 fi
