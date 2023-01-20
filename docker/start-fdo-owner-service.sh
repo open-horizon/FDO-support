@@ -21,7 +21,6 @@ ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
 dbPort=${FDO_DB_PORT:-5432}
-export HZN_FDO_API_URL="http://$FDO_OPS_URL"
 
 #VERBOSE='true'   # let it be set by the container provisioner
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
@@ -82,8 +81,8 @@ isDockerComposeAtLeast() {
 }
 
 ###### MAIN CODE ######
-if [[ -z "$FDO_API_PWD" || -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" ]]; then  #-z "$HZN_FDO_SVC_URL" ||
-    echo "Error: These environment variable must be set to access Owner services APIs: FDO_API_PWD, HZN_EXCHANGE_URL, HZN_FSS_CSSURL"
+if [[ -z "$FDO_API_PWD" || -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" || -z "$HZN_FDO_API_URL" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: FDO_API_PWD, HZN_EXCHANGE_URL, HZN_FSS_CSSURL, HZN_FDO_API_URL"
     exit 0
 fi
 
