@@ -21,7 +21,8 @@ ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
 dbPort=${FDO_DB_PORT:-5432}
-FDO_OCS_SVC_HOST=${FDO_OCS_SVC_HOST:-$(hostname)}
+HZN_FDO_API_URL="http://$FDO_OPS_URL"
+
 #VERBOSE='true'   # let it be set by the container provisioner
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
 
