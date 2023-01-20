@@ -120,8 +120,8 @@ echo "Running key generation script..."
 (cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
 
 #override auto-generated DB username and password with variables
-sed -i -e 's/db_user=.*/db_user=${FDO_DB_USER}/' $workingDir/$deviceBinaryDir/owner/service.env
-sed -i -e 's/db_password=.*/db_password=${FDO_DB_PASSWORD}/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e "s/db_user=.*/db_user=$FDO_DB_USER/" $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e "s/db_password=.*/db_password=$FDO_DB_PASSWORD/" $workingDir/$deviceBinaryDir/owner/service.env
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
