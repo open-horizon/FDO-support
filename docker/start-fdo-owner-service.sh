@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Used to start the FDO Owner and RV service the Horizon management hub (IoT platform/owner) needs.
-
 # Defaults/constants
 ownerPortDefault='8042'
 rvPortDefault='8040'
@@ -123,8 +122,8 @@ echo "Running key generation script..."
 (cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
 
 #override auto-generated DB username and password with variables
-sed -i -e "s/db_user=.*/db_user=fdo/" $workingDir/$deviceBinaryDir/owner/service.env
-sed -i -e "s/db_password=.*/db_password=fdo/" $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/db_user=.*/db_user=${FDO_DB_USER}/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e 's/db_password=.*/db_password=${FDO_DB_PASSWORD}/' $workingDir/$deviceBinaryDir/owner/service.env
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
@@ -136,7 +135,7 @@ sed -i -e 's/<transport-guarantee>CONFIDENTIAL<\/transport-guarantee>/<transport
 sed -i -e 's/<auth-method>CLIENT-CERT<\/auth-method>/<auth-method>DIGEST<\/auth-method>\n<realm-name>Digest Authentication<\/realm-name>/' $workingDir/$deviceBinaryDir/owner/WEB-INF/web.xml
 
 #override JDBC URL. This should be a Postgres DB URL because we default to that dialect below
-sed -i -e "s|jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)|${FDO_DB_URL}|" $workingDir/$deviceBinaryDir/owner/service.yml
+sed -i -e "s|jdbc:mariadb:\/\/host.docker.internal:3306\/emdb?useSSL=\$(useSSL)|$FDO_DB_URL|" $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml connection url'
 sed -i -e 's/org.hibernate.dialect.MariaDBDialect/org.hibernate.dialect.PostgreSQLDialect/' $workingDir/$deviceBinaryDir/owner/service.yml
 chk $? 'sed owner/service.yml dialect'
