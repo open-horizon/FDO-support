@@ -364,11 +364,48 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
         return
     }
 
-    // Generate a node token
-    nodeToken, httpErr := outils.GenerateNodeToken()
-    if httpErr != nil {
-        http.Error(w, httpErr.Error(), httpErr.Code)
+    //Check and see if the imported ownership voucher device Guid already has a nodeToken value
+    vouchersDirName := OcsDbDir + "/v1/devices"
+    deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+    if err != nil {
+        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
         return
+    }
+
+    var vouchersToken string
+    var nodeToken string
+    for _, dir := range deviceDirs {
+        if dir.IsDir() {
+            // Look inside the device dir for nodeToken.txt to see if is part of the org we are listing
+            nodeTokenTxtStr, httpErr := getNodeTokenTxtStr(dir.Name())
+                                    if httpErr != nil {
+                                            http.Error(w, httpErr.Error(), httpErr.Code)
+                                            return
+                                    }
+                                    if nodeTokenTxtStr != "" { // this device has already been imported and has a node token
+                                            vouchersToken = nodeTokenTxtStr
+                                    }
+                            }
+                    }
+
+
+    // Generate a node token
+    if vouchersToken != "" {
+        fmt.Println("NodeToken already exists for this ownership voucher: " + vouchersToken)
+        nodeToken = string(vouchersToken)
+    } else {
+        nodeToken, httpErr = outils.GenerateNodeToken()
+        if httpErr != nil {
+            http.Error(w, httpErr.Error(), httpErr.Code)
+            return
+    }}
+
+    // Create nodeToken.txt file to identify what org this device/voucher is part of
+    fileName = deviceDir + "/nodeToken.txt"
+    outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, nodeToken)
+    if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(nodeToken), 0644); err != nil {
+                http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+                return
     }
 
     deviceAndNodeToken := deviceUuid + ":" + nodeToken
@@ -398,32 +435,32 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
     // Set SVI and agent-install-wrapper.sh arguments in FDO Owner Services
 
-             sviBody := (`[{"filedesc" : "agent-install-wrapper.sh","resource" : "` + wrapperResource + `"},
+    sviBody := (`[{"filedesc" : "agent-install-wrapper.sh","resource" : "` + wrapperResource + `"},
              {"exec" : ["bash","agent-install-wrapper.sh","-i","https://github.com/open-horizon/anax/releases/latest/download",
              "-a","` + deviceAndNodeToken + `","-O","` + deviceOrgId + `","-k","css:"] }]`)
 
-             fmt.Println("SVI request body: " + sviBody)
+    fmt.Println("SVI request body: " + sviBody)
 
-             fdoSVIURL := fdoOwnerURL + "/api/v1/owner/svi"
+    fdoSVIURL := fdoOwnerURL + "/api/v1/owner/svi"
 
-             lr := dac.NewRequest(username, password, method, fdoSVIURL, string(sviBody))
-             lr.Header.Set("content-Type", "text/plain")
-             postResponse, err := lr.Execute()
-                     	if err != nil {
-                     		log.Fatalln(err)
-                     	}
+    lr := dac.NewRequest(username, password, method, fdoSVIURL, string(sviBody))
+    lr.Header.Set("content-Type", "text/plain")
+    postResponse, err := lr.Execute()
+    if err != nil {
+        log.Fatalln(err)
+    }
 
-                     	if postResponse.Body != nil {
-                         		defer postResponse.Body.Close()
-                         	}
+    if postResponse.Body != nil {
+        defer postResponse.Body.Close()
+    }
 
-                         respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
-                             	if err != nil {
-                             		log.Fatalln(err)
-                             	}
+    respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
+    if err != nil {
+        log.Fatalln(err)
+    }
 
-                     lk := string(respBodyBytes)
-                     log.Printf(lk)
+    lk := string(respBodyBytes)
+    log.Printf(lk)
 
 //      // Create exec file
 //      // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
@@ -496,32 +533,33 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
     	}
     	sb := string(respBodyBytes)
         log.Printf(sb)
- // Read the v1/devices/ directory in the db
-                vouchersDirName := OcsDbDir + "/v1/devices"
-                deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-                if err != nil {
-                        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
-                        return
-                }
 
-                vouchers := []string{}
-                for _, dir := range deviceDirs {
-                        if dir.IsDir() {
-                                // Look inside the device dir for orgid.txt to see if is part of the org we are listing
-                                orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
-                                if httpErr != nil {
-                                        http.Error(w, httpErr.Error(), httpErr.Code)
-                                        return
-                                }
-                                if orgidTxtStr == deviceOrgId { // this device is in our org
-                                        vouchers = append(vouchers, dir.Name())
-                                }
-                        }
-                }
+//  // Read the v1/devices/ directory in the db for multitenancy
+//                 vouchersDirName := OcsDbDir + "/v1/devices"
+//                 deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+//                 if err != nil {
+//                         http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
+//                         return
+//                 }
+//
+//                 vouchers := []string{}
+//                 for _, dir := range deviceDirs {
+//                         if dir.IsDir() {
+//                                 // Look inside the device dir for orgid.txt to see if is part of the org we are listing
+//                                 orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
+//                                 if httpErr != nil {
+//                                         http.Error(w, httpErr.Error(), httpErr.Code)
+//                                         return
+//                                 }
+//                                 if orgidTxtStr == deviceOrgId { // this device is in our org
+//                                         vouchers = append(vouchers, dir.Name())
+//                                 }
+//                         }
+//                 }
 
         w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
         w.Header().Set("Content-Type", "text/plain")
-        outils.WriteJsonResponse(http.StatusOK, w, vouchers)
+        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 
 }
 
@@ -990,6 +1028,25 @@ func getOrgidTxtStr(deviceId string) (string, *outils.HttpError) {
 		}
 	}
 	return orgidTxtStr, nil
+}
+
+// Return the org of this device based on the orgid.txt file stored with it, or return ""
+func getNodeTokenTxtStr(deviceId string) (string, *outils.HttpError) {
+	// Look inside the device dir for orgid.txt to what org it belongs to
+	vouchersDirName := OcsDbDir + "/v1/devices"
+	nodeTokenTxtFileName := filepath.Clean(vouchersDirName + "/" + deviceId + "/nodeToken.txt")
+	nodeTokenTxtStr := "" // default if we don't find it in the nodeToken.txt
+	if outils.PathExists(nodeTokenTxtFileName) {
+		var nodeTokenTxtBytes []byte
+		var err error
+		if nodeTokenTxtBytes, err = ioutil.ReadFile(nodeTokenTxtFileName); err != nil {
+			return "", outils.NewHttpError(http.StatusInternalServerError, "Error reading "+nodeTokenTxtFileName+": "+err.Error())
+		} else {
+			nodeTokenTxtStr = string(nodeTokenTxtBytes)
+			nodeTokenTxtStr = strings.TrimSuffix(nodeTokenTxtStr, "\n")
+		}
+	}
+	return nodeTokenTxtStr, nil
 }
 
 // Create the common (not device specific) config files. Called during startup.

@@ -23,8 +23,8 @@ ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
 FDO_DB_USER=${FDO_DB_USER:-"fdo"}
 FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-"fdo"}
-FDO_OCS_SVC_HOST=${FDO_OCS_SVC_HOST:-$(hostname)}
-FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://${FDO_OCS_SVC_HOST}:5432/fdo"}
+HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$(hostname):$ownerApiPort"}
+FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://$(hostname):5432/fdo"}
 #VERBOSE='true'   # let it be set by the container provisioner
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
 
@@ -228,7 +228,7 @@ while [ $httpCode != 200 ]
 do
   echo -n "."
   sleep 2
-  httpCode=$(curl -I -s -w "%{http_code}" -o /dev/null --digest -u ${USER_AUTH} --location --request GET "${FDO_OCS_SVC_HOST}:${ownerApiPort}/health")
+  httpCode=$(curl -I -s -w "%{http_code}" -o /dev/null --digest -u ${USER_AUTH} --location --request GET "${HZN_FDO_API_URL}/health")
 done
 echo ""
 
