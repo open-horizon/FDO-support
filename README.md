@@ -40,8 +40,8 @@ The FDO owner services are packaged as a single docker container that can be run
 
    ```bash
    mkdir $HOME/fdo; cd $HOME/fdo
-   curl -sSLO https://raw.githubusercontent.com/lorenzoking/FDO-support/owner-api/docker/run-fdo-owner-service.sh
-   chmod +x run-sdo-owner-services.sh
+   curl -sSLO https://raw.githubusercontent.com/lorenzoking/FDO-support/internalizing-routes/docker/run-fdo-owner-service.sh
+   chmod +x run-fdo-owner-service.sh
    ```
 
 3. Run `./run-sdo-owner-services.sh -h` to see the usage, and set all of the necessary environment variables. For example:

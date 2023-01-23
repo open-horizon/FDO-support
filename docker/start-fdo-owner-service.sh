@@ -20,8 +20,8 @@ ownerApiPort="${1:-$ownerPortDefault}"  # precedence: arg, or tls port, or non-t
 ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
-FDO_DB_USER=${FDO_DB_USER:-"fdo"}
-FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-"fdo"}
+FDO_DB_USER=${FDO_DB_USER:-"fdouser"}
+FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-"fdouser"}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$(hostname):$ownerApiPort"}
 FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://$(hostname):5432/fdo"}
 #VERBOSE='true'   # let it be set by the container provisioner
@@ -122,8 +122,8 @@ echo "Running key generation script..."
 (cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
 
 #override auto-generated DB username and password with variables
-sed -i -e 's/db_user=.*/db_user=${FDO_DB_USER}/' $workingDir/$deviceBinaryDir/owner/service.env
-sed -i -e 's/db_password=.*/db_password=${FDO_DB_PASSWORD}/' $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e "s|db_user=.*|db_user=${FDO_DB_USER}|" $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e "s|db_password=.*|db_password=${FDO_DB_PASSWORD}|" $workingDir/$deviceBinaryDir/owner/service.env
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
