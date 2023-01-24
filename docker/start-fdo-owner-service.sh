@@ -20,8 +20,6 @@ ownerApiPort="${1:-$ownerPortDefault}"  # precedence: arg, or tls port, or non-t
 ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 rvPort=${FDO_RV_PORT:-$rvPortDefault}
-dbPort=${FDO_DB_PORT:-5432}
-
 #VERBOSE='true'   # let it be set by the container provisioner
 FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
 
@@ -216,9 +214,19 @@ sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
 #
 
 #Run the service
-echo "Starting owner service..."
 (cd $workingDir/$deviceBinaryDir/owner && nohup java -jar aio.jar &)
 #(cd $workingDir/$deviceBinaryDir/owner && docker-compose up --build)
+
+echo -n "waiting for Owner service to boot."
+httpCode=500
+while [ $httpCode != 200 ]
+do
+  echo -n "."
+  sleep 2
+  httpCode=$(curl -I -s -w "%{http_code}" -o /dev/null --digest -u ${USER_AUTH} --location --request GET "${HZN_FDO_API_URL}/health")
+done
+echo ""
+
 
 echo "Starting ocs-api service..."
 ./ocs-api/linux/ocs-api $ocsApiPort $ocsDbDir

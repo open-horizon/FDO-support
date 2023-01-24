@@ -3,9 +3,9 @@
 ./agent-install.crt
 
 # Where the SDO files are downloaded to
-./sdo/
-# Where the FDO files are downloaded to 
 ./fdo/
+# Where the FDO files are downloaded to 
+fdo/
 #todo: remove
 
 ./vendor/
