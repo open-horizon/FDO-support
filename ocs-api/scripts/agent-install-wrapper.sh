@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# The primary purpose of this wrapper is to be able to invoke agent-install.sh in the SDO context to install and register
-# the horizon agent and log all of its stdout/stderr. SDO is slow at downloading this wrapper script to the device, so keep it as short as possible.
-# This wrapper script is run on the edge device in the SDO directory /var/sdo/sdo_device_binaries_<version>_linux_x64/device. All of the needed files
-# like agent-install.cfg and agent-install.crt are downloaded by SDO to the same directory.
+# The primary purpose of this wrapper is to be able to invoke agent-install.sh in the FDO context to install and register
+# the horizon agent and log all of its stdout/stderr. FDO is slow at downloading this wrapper script to the device, so keep it as short as possible.
+# This wrapper script is run on the edge device in the FDO directory /var/fdo/sdo_device_binaries_<version>_linux_x64/device. All of the needed files
+# like agent-install.cfg and agent-install.crt are downloaded by FDO to the same directory. HOW
 
 echo "$0 starting...."
 echo "Will be running: ./agent-install.sh $*"
@@ -11,17 +11,17 @@ echo "Will be running: ./agent-install.sh $*"
 # Verify the number of args is what we are handling below
 maxArgs=8   # the exec statement below is only passing up to this many args to agent-install.sh
 if [ $# -gt $maxArgs -o "$1" != '-i' -o "$3" != '-a' -o "$5" != '-O' -o "$7" != '-k' ]; then
-    # it is easy to miss this error msg in the midst of the verbose sdo output, so make it more obvious
+    # it is easy to miss this error msg in the midst of the verbose fdo output, so make it more obvious
     echo "~~~~~~~~~~~~~~~~\nError: too many arguments passed to agent-install-wrapper.sh or the arguments are in the wrong order\n~~~~~~~~~~~~~~~~"
     exit 2
 fi
 
-# This script has a 2nd purpose in the native client case: when run inside the docker sdo container, copy the downloaded files to outside the container
-if [ -f /target/boot/inside-sdo-container ]; then
-    # Copy all of the downloaded files (including ourselves) to /target/boot, which is mounted from host /var/horizon/sdo-native
+# This script has a 2nd purpose in the native client case: when run inside the docker fdo container, copy the downloaded files to outside the container
+if [ -f /target/boot/inside-fdo-container ]; then
+    # Copy all of the downloaded files (including ourselves) to /target/boot, which is mounted from host /var/horizon/fdo-native
     echo "Copying downloaded files to /target/boot: $(ls | tr "\n" " ")"
     # need to exclude a few files and dirs, so copy with find
-    find . -maxdepth 1 -type f ! -name inside-sdo-container ! -name linux-client ! -name run_csdk_sdo.sh -exec cp -p -t /target/boot/ {} +
+    find . -maxdepth 1 -type f ! -name inside-fdo-container ! -name linux-client ! -name run_csdk_sdo.sh -exec cp -p -t /target/boot/ {} +
     if [ $? -ne 0 ]; then echo "Error: can not copy downloaded files to /target/boot"; fi
     # The <device-uuid>_exec file is not actually saved to disk, so recreate it (with a fixed name)
     echo "/bin/sh agent-install-wrapper.sh \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" " > /target/boot/device_exec
@@ -75,8 +75,8 @@ else   # $pkgsFrom==https://github.com/open-horizon/anax/releases/* but $cfgFrom
 fi
 chmod 755 agent-install.sh
 
-mkdir -p /var/sdo
-logFile=/var/sdo/agent-install.log
+mkdir -p /var/fdo
+logFile=/var/fdo/agent-install.log
 echo "Logging all output to $logFile"
 
 # If tee is installed, use it so the output can go to both stdout/stderr and the log file

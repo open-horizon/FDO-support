@@ -40,8 +40,8 @@ The FDO owner services are packaged as a single docker container that can be run
 
    ```bash
    mkdir $HOME/fdo; cd $HOME/fdo
-   curl -sSLO https://raw.githubusercontent.com/lorenzoking/FDO-support/owner-api/docker/run-fdo-owner-service.sh
-   chmod +x run-sdo-owner-services.sh
+   curl -sSLO https://raw.githubusercontent.com/lorenzoking/FDO-support/internalizing-routes/docker/run-fdo-owner-service.sh
+   chmod +x run-fdo-owner-service.sh
    ```
 
 3. Run `./run-sdo-owner-services.sh -h` to see the usage, and set all of the necessary environment variables. For example:
@@ -218,7 +218,7 @@ curl -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H C
 #For Example
 curl -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
 #To verify
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
 
 ```
 
