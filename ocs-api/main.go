@@ -318,10 +318,11 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
                 	}
     fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
 
-
+    fmt.Println("This is the GET Public Key API route: " + fdoPublicKeyURL)
     	username, password := outils.GetOwnerServiceApiKey()
     	method := http.MethodGet
-
+    fmt.Println("Internal Digest Username: " + username)
+    fmt.Println("Internal Digest Password: " + password)
     	dr := dac.NewRequest(username, password, method, fdoPublicKeyURL, string(requestBodyBytes))
     	resp, err := dr.Execute()
     	if err != nil {
