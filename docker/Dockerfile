@@ -99,11 +99,11 @@ COPY --chown=1000:0 ocs-api/ $WORKDIR/ocs-api/
 
 
 
-# Get our ocs-api binary, startup script, agent-install-wrapper.sh
+# Get our startup script, agent-install-wrapper.sh
 COPY --chown=1000:0 docker/start-fdo-owner-service.sh $WORKDIR/
 
-
 COPY --chown=1000:0 ocs-api/scripts/*.sh $WORKDIR/scripts/
+
 # Note: the EXPOSE stmt doesn't actually expose the port, it just serves as documentation about the -p flags docker run should use. We may override these values, so just let docker run set them.
 #EXPOSE 8040  8042  9008
 # RV: 8040, OPS: 8042, Our ocs-api: 9008

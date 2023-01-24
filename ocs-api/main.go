@@ -106,6 +106,77 @@ func main() {
             defer resp.Body.Close()
          }
 
+             // Create agent-install.crt
+                 valuesDir := OcsDbDir + "/v1/values"
+                 fileName := valuesDir + "/agent-install.crt"
+                 fmt.Println("Posting agent-install.crt package: " + fileName)
+                 certFile, err := ioutil.ReadFile(fileName)
+                 if err != nil {
+                     log.Fatalln(err)
+                 }
+                 // Post agent-install.crt in FDO Owner Services
+                 certResource :="agent-install.crt"
+             	fdoCertURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + certResource
+                 fmt.Println("URL for agent-install.crt: " + fdoCertURL)
+
+                 crt := dac.NewRequest(username, password, method, fdoCertURL, string(certFile))
+                 crt.Header.Set("content-Type", "text/plain")
+                 newResp, err := crt.Execute()
+                     if err != nil {
+                     		log.Fatalln(err)
+                     }
+                     if newResp.Body != nil {
+                             defer newResp.Body.Close()
+                     }
+
+             // Create agent-install.cfg
+                     valuesDir = OcsDbDir + "/v1/values"
+                     fileName = valuesDir + "/agent-install.cfg"
+                     fmt.Println("Posting agent-install.cfg package: " + fileName)
+                     cfgFile, err := ioutil.ReadFile(fileName)
+                     if err != nil {
+                         log.Fatalln(err)
+                     }
+                     // Post agent-install.cfg in FDO Owner Services
+                     configResource :="agent-install.cfg"
+                 	fdoCfgURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + configResource
+                     fmt.Println("URL for agent-install.cfg: " + fdoCfgURL)
+
+                     cfg := dac.NewRequest(username, password, method, fdoCfgURL, string(cfgFile))
+                     cfg.Header.Set("content-Type", "text/plain")
+                     newResp, err = cfg.Execute()
+                         if err != nil {
+                         		log.Fatalln(err)
+                         }
+
+                         if newResp.Body != nil {
+                                 defer newResp.Body.Close()
+                         }
+
+             // Create agent-install-wrapper
+             valuesDir = OcsDbDir + "/v1/values"
+             fileName = valuesDir + "/agent-install-wrapper.sh"
+             fmt.Println("Setting SVI package: " + fileName)
+             wrapperFile, err := ioutil.ReadFile(fileName)
+             if err != nil {
+                 log.Fatalln(err)
+             }
+             // Post agent-install-wrapper in FDO Owner Services
+             wrapperResource :="agent-install-wrapper.sh"
+         	 fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
+             fmt.Println("URL for agent-install-wrapper package: " + fdoResourceURL)
+
+             pr := dac.NewRequest(username, password, method, fdoResourceURL, string(wrapperFile))
+             pr.Header.Set("content-Type", "text/plain")
+             newResp, err = pr.Execute()
+                 if err != nil {
+                 		log.Fatalln(err)
+                 }
+
+                 if newResp.Body != nil {
+                         defer newResp.Body.Close()
+                 }
+
 
 	// Get the cert to use when talking to the exchange for authentication, if set
 	if outils.IsEnvVarSet("EXCHANGE_INTERNAL_CERT") {
@@ -247,7 +318,7 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
                 	}
     fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
 
-    //creds := cliutils.OrgAndCreds(org, userCreds)
+
     	username, password := outils.GetOwnerServiceApiKey()
     	method := http.MethodGet
 
@@ -318,6 +389,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
             	}
 	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 
+    //Digest auth request to import voucher
         	username, password := outils.GetOwnerServiceApiKey()
         	method := http.MethodPost
 
@@ -364,80 +436,59 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
         return
     }
 
-    //Check and see if the imported ownership voucher device Guid already has a nodeToken value
-    vouchersDirName := OcsDbDir + "/v1/devices"
-    deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-    if err != nil {
-        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
+    // Generate a node token
+    nodeToken, httpErr := outils.GenerateNodeToken()
+    if httpErr != nil {
+        http.Error(w, httpErr.Error(), httpErr.Code)
         return
     }
 
-    var vouchersToken string
-    var nodeToken string
-    for _, dir := range deviceDirs {
-        if dir.IsDir() {
-            // Look inside the device dir for nodeToken.txt to see if is part of the org we are listing
-            nodeTokenTxtStr, httpErr := getNodeTokenTxtStr(dir.Name())
-                                    if httpErr != nil {
-                                            http.Error(w, httpErr.Error(), httpErr.Code)
-                                            return
-                                    }
-                                    if nodeTokenTxtStr != "" { // this device has already been imported and has a node token
-                                            vouchersToken = nodeTokenTxtStr
-                                    }
-                            }
-                    }
+
+         // Create exec file
+         // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
+        execCmd := fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom)
+        fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
+        outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
+        if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
+         http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+         return
+        }
+
+        // Post device specified exec file in FDO Owner Services
+            valuesDir := OcsDbDir + "/v1/values"
+            fileName = valuesDir + "/" + deviceUuid + "_exec"
+            fmt.Println("Device Specific Wrapper: " + fileName)
+            wrapperFile, err := ioutil.ReadFile(fileName)
+            if err != nil {
+                log.Fatalln(err)
+            }
+            // Create agent-install-wrapper
+            wrapperResource := deviceUuid + "_exec"
+        	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
+            fmt.Println("URL for device specific exec file: " + fdoResourceURL)
+
+            pr := dac.NewRequest(username, password, method, fdoResourceURL, string(wrapperFile))
+            pr.Header.Set("content-Type", "text/plain")
+            newResp, err := pr.Execute()
+                if err != nil {
+                		log.Fatalln(err)
+                }
+
+                if newResp.Body != nil {
+                        defer newResp.Body.Close()
+                }
 
 
-    // Generate a node token
-    if vouchersToken != "" {
-        fmt.Println("NodeToken already exists for this ownership voucher: " + vouchersToken)
-        nodeToken = string(vouchersToken)
-    } else {
-        nodeToken, httpErr = outils.GenerateNodeToken()
-        if httpErr != nil {
-            http.Error(w, httpErr.Error(), httpErr.Code)
-            return
-    }}
-
-    // Create nodeToken.txt file to identify what org this device/voucher is part of
-    fileName = deviceDir + "/nodeToken.txt"
-    outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, nodeToken)
-    if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(nodeToken), 0644); err != nil {
-                http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-                return
-    }
-
-    deviceAndNodeToken := deviceUuid + ":" + nodeToken
-    // Post device specified agent-install-wrapper in FDO Owner Services
-
-    valuesDir := OcsDbDir + "/v1/values"
-    fileName = valuesDir + "/agent-install-wrapper.sh"
-    fmt.Println("Setting SVI package: " + fileName)
-    wrapperFile, err := ioutil.ReadFile(fileName)
-    if err != nil {
-        log.Fatalln(err)
-    }
-    wrapperResource :="agent-install-wrapper-" + deviceUuid + ".sh"
-	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
-    fmt.Println("URL for SVI package: " + fdoResourceURL)
-
-        	pr := dac.NewRequest(username, password, method, fdoResourceURL, string(wrapperFile))
-        	pr.Header.Set("content-Type", "text/plain")
-        	newResp, err := pr.Execute()
-        	if err != nil {
-        		log.Fatalln(err)
-        	}
-
-             if newResp.Body != nil {
-                defer newResp.Body.Close()
-             }
 
     // Set SVI and agent-install-wrapper.sh arguments in FDO Owner Services
+    // post specified exec file
 
-    sviBody := (`[{"filedesc" : "agent-install-wrapper.sh","resource" : "` + wrapperResource + `"},
-             {"exec" : ["bash","agent-install-wrapper.sh","-i","https://github.com/open-horizon/anax/releases/latest/download",
-             "-a","` + deviceAndNodeToken + `","-O","` + deviceOrgId + `","-k","css:"] }]`)
+    sviBody := (`[{"filedesc" : "agent-install.crt","resource" : "agent-install.crt"},
+            {"filedesc" : "agent-install.cfg","resource" : "agent-install.cfg"},
+            {"filedesc" : "agent-install-wrapper.sh","resource" : "agent-install-wrapper.sh"},
+            {"filedesc" : "setup.sh","resource" : "$(guid)_exec"},
+            {"exec" : ["bash","setup.sh"] }]`)
+
 
     fmt.Println("SVI request body: " + sviBody)
 
@@ -462,15 +513,6 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
     lk := string(respBodyBytes)
     log.Printf(lk)
 
-//      // Create exec file
-//      // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
-//     execCmd := outils.MakeExecCmd(fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom))
-//     fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
-//     outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-//     if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
-//      http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-//      return
-//     }
 
     // Send response to client
     respBody := map[string]interface{}{
@@ -489,7 +531,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers ...", orgId)
 
-    var respBodyBytes []byte
+    //var respBodyBytes []byte
     var requestBodyBytes []byte
     var fdoVoucherURL string
 	// Determine the org id to use for the device, based on various inputs
@@ -527,39 +569,47 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
     		defer resp.Body.Close()
     	}
 
-    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
-    	if err != nil {
-    		log.Fatalln(err)
-    	}
-    	sb := string(respBodyBytes)
-        log.Printf(sb)
+//     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+//     	if err != nil {
+//     		log.Fatalln(err)
+//     	}
 
-//  // Read the v1/devices/ directory in the db for multitenancy
-//                 vouchersDirName := OcsDbDir + "/v1/devices"
-//                 deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-//                 if err != nil {
-//                         http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
-//                         return
-//                 }
-//
-//                 vouchers := []string{}
-//                 for _, dir := range deviceDirs {
-//                         if dir.IsDir() {
-//                                 // Look inside the device dir for orgid.txt to see if is part of the org we are listing
-//                                 orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
-//                                 if httpErr != nil {
-//                                         http.Error(w, httpErr.Error(), httpErr.Code)
-//                                         return
-//                                 }
-//                                 if orgidTxtStr == deviceOrgId { // this device is in our org
-//                                         vouchers = append(vouchers, dir.Name())
-//                                 }
-//                         }
-//                 }
+ // Read the v1/devices/ directory in the db for multitenancy
+                vouchersDirName := OcsDbDir + "/v1/devices"
+                deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+                if err != nil {
+                        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
+                        return
+                }
+
+                vouchers := []string{}
+                for _, dir := range deviceDirs {
+                        if dir.IsDir() {
+                                // Look inside the device dir for orgid.txt to see if is part of the org we are listing
+                                orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
+                                if httpErr != nil {
+                                        http.Error(w, httpErr.Error(), httpErr.Code)
+                                        return
+                                }
+                                if orgidTxtStr == deviceOrgId { // this device is in our org
+                                        vouchers = append(vouchers, dir.Name())
+                                }
+                        }
+                }
+
+        //Verify that each value in vouchers is also in respBodyBytes - THIS IS NOT WORKING RIGHT
+
+//         dbQuery := bytes.NewBuffer(respBodyBytes).String()
+//         vouchersString := strings.Join(vouchers,"\n")
+//         fmt.Println("FDO Db Query: " + dbQuery)
+//         fmt.Println("Index Query: " + vouchersString)
+//         result := vouchersString == dbQuery
+//         fmt.Println(result)
+
 
         w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
         w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+        outils.WriteJsonResponse(http.StatusOK, w, vouchers)
 
 }
 
@@ -593,7 +643,17 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
                 	}
     fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers/" + deviceUuid
 
-    //creds := cliutils.OrgAndCreds(org, userCreds)
+    //check if deviceUuid is found in the directory index first, if it is then continue with the request.
+    //if not, then return error
+    // Read voucher.json from the db
+    voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/ownership_voucher.txt"
+    voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
+    if err != nil {
+            		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
+            		return
+    }
+
+    //Getting voucher from FDO DB
     	username, password := outils.GetOwnerServiceApiKey()
     	method := http.MethodGet
 
@@ -611,12 +671,33 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
     	if err != nil {
     		log.Fatalln(err)
     	}
-    	sb := string(respBodyBytes)
-        log.Printf(sb)
+    	lk := string(respBodyBytes)
+        log.Printf(lk)
+
+        	// Confirm this voucher/device is in the client's org. Doing this check after getting the voucher, because if the
+        	// voucher doesn't exist, we want them get that error, rather than that it is not in their org
+        	orgidTxtStr, httpErr := getOrgidTxtStr(deviceUuid)
+        	if httpErr != nil {
+        		http.Error(w, httpErr.Error(), httpErr.Code)
+        		return
+        	}
+        	if orgidTxtStr != deviceOrgId { // this device is in our org
+        		http.Error(w, "Device "+deviceUuid+" is not in org "+deviceOrgId, http.StatusForbidden)
+        		return
+        	}
+
+         //Verify that the value in voucherBytes is also in respBodyBytes - THIS IS NOT WORKING RIGHT
+
+//                 dbQuery := bytes.NewBuffer(respBodyBytes).String()
+//                 //fmt.Println("Db Query: " + dbQuery)
+//                 //fmt.Println("Index Query: " + string(voucherBytes))
+//                 result := string(voucherBytes) == dbQuery
+//                 fmt.Println(result)
+
 
     	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
         w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+        outils.WriteResponse(http.StatusOK, w, voucherBytes)
 }
 
 //============= POST /api/orgs/{ord-id}/fdo/redirect =============
