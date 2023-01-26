@@ -88,7 +88,8 @@ func main() {
          }
          u, err := url.Parse(fdoOwnerURL)
          if err != nil {
-            log.Fatal(err)
+            outils.NewHttpError(http.StatusInternalServerError, "Error parsing "+fdoOwnerURL+": "+err.Error())
+            return
          }
          fmt.Println("Setting To2 Address as: " + u.Hostname())
          to2Body = (`[[null,"` + u.Hostname() + `",8042,3]]`)
@@ -104,7 +105,8 @@ func main() {
          }
          resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(to2Byte))
          if err != nil {
-            log.Fatalln(err)
+            outils.NewHttpError(http.StatusInternalServerError, "Error setting To2 address: "+fdoTo2URL+": "+err.Error())
+            return
          }
 
          if resp.Body != nil {
@@ -117,7 +119,8 @@ func main() {
                  fmt.Println("Posting agent-install.crt package: " + fileName)
                  certFile, err := ioutil.ReadFile(fileName)
                  if err != nil {
-                     log.Fatalln(err)
+                     outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+                     return
                  }
                  // Post agent-install.crt in FDO Owner Services
                  certResource :="agent-install.crt"
@@ -126,7 +129,8 @@ func main() {
 
                  newResp, err := client.Post(fdoCertURL, "text/plain", bytes.NewReader(certFile))
                      if err != nil {
-                     		log.Fatalln(err)
+                     		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+certResource+" in SVI Database: "+err.Error())
+                            return
                      }
                      if newResp.Body != nil {
                              defer newResp.Body.Close()
@@ -138,7 +142,8 @@ func main() {
                      fmt.Println("Posting agent-install.cfg package: " + fileName)
                      cfgFile, err := ioutil.ReadFile(fileName)
                      if err != nil {
-                         log.Fatalln(err)
+                         outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+                         return
                      }
                      // Post agent-install.cfg in FDO Owner Services
                      configResource :="agent-install.cfg"
@@ -146,7 +151,8 @@ func main() {
                      fmt.Println("URL for agent-install.cfg: " + fdoCfgURL)
                      newResp, err = client.Post(fdoCfgURL, "text/plain", bytes.NewReader(cfgFile))
                      if err != nil {
-                     		log.Fatalln(err)
+                     		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+configResource+" in SVI Database: "+err.Error())
+                            return
                      }
                      if newResp.Body != nil {
                              defer newResp.Body.Close()
@@ -158,7 +164,8 @@ func main() {
              fmt.Println("Setting SVI package: " + fileName)
              wrapperFile, err := ioutil.ReadFile(fileName)
              if err != nil {
-                 log.Fatalln(err)
+                 outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+                 return
              }
              // Post agent-install-wrapper in FDO Owner Services
              wrapperResource :="agent-install-wrapper.sh"
@@ -167,7 +174,8 @@ func main() {
 
              newResp, err = client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
              if err != nil {
-                log.Fatalln(err)
+                outils.NewHttpError(http.StatusInternalServerError, "Error posting "+wrapperResource+" in SVI Database: "+err.Error())
+                return
              }
              if newResp.Body != nil {
                 defer newResp.Body.Close()
@@ -267,11 +275,13 @@ func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) 
 
     resp, err := http.Get(fdoOwnerURL + "/health")
     if err != nil {
-        log.Fatalln(err)
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
     }
     body, err := ioutil.ReadAll(resp.Body)
        if err != nil {
-          log.Fatalln(err)
+          http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+          return
        }
      w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
      w.Header().Set("Content-Type", "text/plain")
@@ -320,7 +330,8 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
     }
     resp, err := client.Get(fdoPublicKeyURL)
     if err != nil {
-    		log.Fatalln(err)
+    		http.Error(w, err.Error(), http.StatusBadRequest)
+            return
     	}
 
     	if resp.Body != nil {
@@ -329,7 +340,8 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 
     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
     	if err != nil {
-    		log.Fatalln(err)
+    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+            return
     	}
     	sb := string(respBodyBytes)
         log.Printf(sb)
@@ -392,8 +404,9 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
              resp, err := client.Post(fdoVoucherURL, "text/plain", bytes.NewReader(bodyBytes))
              if err != nil {
-                log.Fatalln(err)
-             }
+                     http.Error(w, err.Error(), http.StatusBadRequest)
+                     return
+                 }
 
              if resp.Body != nil {
                 defer resp.Body.Close()
@@ -401,7 +414,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
              respBodyBytes, err = ioutil.ReadAll(resp.Body)
                 	if err != nil {
-                		log.Fatalln(err)
+                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+                        return
                 	}
 
     //string device UUID
@@ -445,8 +459,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
         fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
         outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
         if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
-         http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-         return
+            http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+            return
         }
 
         // Post device specified exec file in FDO Owner Services
@@ -455,7 +469,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
             fmt.Println("Device Specific Wrapper: " + fileName)
             wrapperFile, err := ioutil.ReadFile(fileName)
             if err != nil {
-                log.Fatalln(err)
+                http.Error(w, "Error reading "+fileName+": "+err.Error(), http.StatusNotFound)
+                return
             }
             // Create agent-install-wrapper
             wrapperResource := deviceUuid + "_exec"
@@ -464,7 +479,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
         newResp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
         if err != nil {
-            log.Fatalln(err)
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
         }
 
         if newResp.Body != nil {
@@ -495,7 +511,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
     postResponse, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(sviByte))
                  if err != nil {
-                    log.Fatalln(err)
+                    http.Error(w, err.Error(), http.StatusBadRequest)
+                    return
                  }
 
                  if postResponse.Body != nil {
@@ -504,7 +521,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
     respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
     if err != nil {
-        log.Fatalln(err)
+        http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+        return
     }
 
     lk := string(respBodyBytes)
@@ -559,7 +577,8 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
     }
     resp, err := client.Get(fdoVoucherURL)
     if err != nil {
-        log.Fatalln(err)
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
     }
     if resp.Body != nil {
         defer resp.Body.Close()
@@ -658,7 +677,8 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
         }
         resp, err := client.Get(fdoVoucherURL)
         if err != nil {
-            log.Fatalln(err)
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
         }
         if resp.Body != nil {
             defer resp.Body.Close()
@@ -666,7 +686,8 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 
     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
     	if err != nil {
-    		log.Fatalln(err)
+    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+            return
     	}
     	lk := string(respBodyBytes)
         log.Printf(lk)
@@ -751,7 +772,8 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 
                  resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(bodyBytes))
                  if err != nil {
-                    log.Fatalln(err)
+                    http.Error(w, err.Error(), http.StatusBadRequest)
+                    return
                  }
 
                  if resp.Body != nil {
@@ -760,7 +782,8 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 
             respBodyBytes, err = ioutil.ReadAll(resp.Body)
                 	if err != nil {
-                		log.Fatalln(err)
+                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+                        return
                 	}
 
         sb := string(respBodyBytes)
@@ -805,7 +828,8 @@ func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r 
             }
             resp, err := client.Get(fdoTo0URL)
             if err != nil {
-                log.Fatalln(err)
+                http.Error(w, err.Error(), http.StatusBadRequest)
+                return
             }
             if resp.Body != nil {
                 defer resp.Body.Close()
@@ -813,7 +837,8 @@ func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r 
 
     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
     	if err != nil {
-    		log.Fatalln(err)
+    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+            return
     	}
     	sb := string(respBodyBytes)
         log.Printf(sb)
@@ -878,7 +903,8 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 
                      resp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(bodyBytes))
                      if err != nil {
-                        log.Fatalln(err)
+                        http.Error(w, err.Error(), http.StatusBadRequest)
+                        return
                      }
 
                      if resp.Body != nil {
@@ -887,7 +913,8 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 
             respBodyBytes, err = ioutil.ReadAll(resp.Body)
                 	if err != nil {
-                		log.Fatalln(err)
+                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+                        return
                 	}
 
         sb := string(respBodyBytes)
@@ -952,7 +979,8 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
             }
             resp, err := client.Get(fdoResourceURL)
             if err != nil {
-                log.Fatalln(err)
+                http.Error(w, err.Error(), http.StatusBadRequest)
+                return
             }
             if resp.Body != nil {
                 defer resp.Body.Close()
@@ -960,7 +988,8 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
 
             respBodyBytes, err = ioutil.ReadAll(resp.Body)
                 	if err != nil {
-                		log.Fatalln(err)
+                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+                        return
                 	}
 
         sb := string(respBodyBytes)
@@ -1022,7 +1051,8 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 
                          resp, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(bodyBytes))
                          if err != nil {
-                            log.Fatalln(err)
+                            http.Error(w, err.Error(), http.StatusBadRequest)
+                            return
                          }
 
                          if resp.Body != nil {
@@ -1031,7 +1061,8 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 
             respBodyBytes, err = ioutil.ReadAll(resp.Body)
             if err != nil {
-                log.Fatalln(err)
+                http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+                return
             }
 
         sb := string(respBodyBytes)
