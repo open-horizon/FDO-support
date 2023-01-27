@@ -192,20 +192,10 @@ The ownership voucher created for the device in the previous step needs to be im
 
 ### <a name="service-info"></a>Configuring Service Info Package
 
-In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
+All of the following steps have been automated by the ocs-api to install the horizon agent on the target device. In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
 
-1. Configure the Owner Services TO2 address using the following API
 
- ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain  --data-raw '[[null,"<HZN_FDO_SVC_URL DNS>",<HZN_FDO_SVC_URL PORT>,3]]' $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/redirect && echo
-
-#For example
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[[null,"9.30.217.77",8042,3]]' $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/redirect && echo
-#Internal Owner service API
-curl -D - --digest -u $FDO_API_PWD --location --request GET $HZN_FDO_API_URL/api/v1/owner/redirect --header 'Content-Type: text/plain'
- ```
-
-2. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Services.
+1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Services.
 
 ```bash
 curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
@@ -215,7 +205,7 @@ curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_
 
 ```
 
-3. Post the script that you want in the service info package. This is the script that will configure your device on boot up.
+2. Post the script that you want in the service info package. This is the script that will configure your device on boot up.
 
 ```bash
 curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
@@ -227,7 +217,7 @@ curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -H Conten
 ```
 
 
-4. Now you can configure the service info package with the script that has been posted to the Owner Services DB.
+3. Now you can configure the service info package with the script that has been posted to the Owner Services DB.
 ```bash
 curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/svi && echo
 
