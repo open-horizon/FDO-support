@@ -136,7 +136,7 @@ curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://
 
 ## Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
 #For Example
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"192.168.0.33"],[3,8040],[12,1],[2,"192.168.0.33"],[4,8040]]]' #'[[[5,"192.168.0.237"],[3,8040],[12,2],[2,"192.168.0.237"],[4,8041]]]' For TLS
+curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"9.30.217.77"],[3,8040],[12,1],[2,"9.30.217.77"],[4,8040]]]' #'[[[5,"9.30.217.77"],[3,8040],[12,2],[2,"9.30.217.77"],[4,8041]]]' For TLS
 
 curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain'
 
@@ -200,7 +200,7 @@ In this step you can also control what edge services should be run on the device
 curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain  --data-raw '[[null,"<HZN_FDO_SVC_URL DNS>",<HZN_FDO_SVC_URL PORT>,3]]' $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/redirect && echo
 
 #For example
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[[null,"192.168.0.3",8042,3]]' $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/redirect && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[[null,"9.30.217.77",8042,3]]' $HZN_FDO_API_URL/orgs/$HZN_ORG_ID/fdo/redirect && echo
 #Internal Owner service API
 curl -D - --digest -u $FDO_API_PWD --location --request GET $HZN_FDO_API_URL/api/v1/owner/redirect --header 'Content-Type: text/plain'
  ```
