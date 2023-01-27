@@ -86,10 +86,11 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
    export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
    ```
 
-2. Query the Owner services health and version:
+2. Query the Owner services and Ocs API  health and version:
 
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/version && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/fdo/version | jq
+curl -k -sS $HZN_FDO_SVC_URL/version && echo
 ```
 
 3. Query the ownership vouchers that have already been imported (initially it will be an empty list):

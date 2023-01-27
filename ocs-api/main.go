@@ -218,10 +218,10 @@ func main() {
 // API route dispatcher
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("Handling %s ...", r.URL.Path)
-	if matches := OrgFDOVersionRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/version
-      	getFdoVersionHandler(matches[1], w, r)
+	if r.Method == "GET" && r.URL.Path == "/api/version" {
+    		getVersionHandler(w, r)
 	} else if r.Method == "GET" && r.URL.Path == "/api/fdo/version" {
-	    getFdoVersionHandler("", w, r)
+	    getFdoVersionHandler(w, r)
 	} else if matches := OrgFDOKeyRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/certificate?alias=SECP256R1
         getFdoPublicKeyHandler(matches[1], matches[2], w, r)
 	} else if matches := OrgFDOVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/vouchers
@@ -249,24 +249,25 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 // Route Handlers --------------------------------------------------------------------------------------------------
 
+//============= GET /api/version =============
+// Returns the ocs-api version (in plain text, not json)
+func getVersionHandler(w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/version ...")
+
+	// Send voucher to client
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	_, err := w.Write([]byte(OCS_API_VERSION))
+	if err != nil {
+		outils.Error(err.Error())
+	}
+}
+
 //============= GET /api/fdo/version =============
 // Returns the fdo Owner Service version (in plain text, not json)
-func getFdoVersionHandler(orgId string, w http.ResponseWriter, r *http.Request) {
-	outils.Verbose("GET /api/orgs/%s/fdo/version ...", orgId)
+func getFdoVersionHandler(w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/fdo/version ...")
 
-	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
-    	if httpErr != nil {
-    		http.Error(w, httpErr.Error(), httpErr.Code)
-    		return
-    	}
-
-    	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
-    		http.Error(w, httpErr.Error(), httpErr.Code)
-    		return
-    	} else if !authenticated {
-    		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
-    		return
-    	}
 
     fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
     if fdoOwnerURL == "" {
