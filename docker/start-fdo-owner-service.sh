@@ -218,7 +218,7 @@ sed -i -e 's/ssl-cert/ssl_cert/' $workingDir/$deviceBinaryDir/owner/service.env
 #
 
 #Run the service
-(cd $workingDir/$deviceBinaryDir/owner && nohup java -jar aio.jar &)
+(cd $workingDir/$deviceBinaryDir/owner && nohup java -Djava.security.egd=file:/dev/urandom -jar aio.jar &)
 #(cd $workingDir/$deviceBinaryDir/owner && docker-compose up --build)
 
 echo -n "waiting for Owner service to boot."
