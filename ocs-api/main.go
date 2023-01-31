@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"bytes"
 	"log"
 	"net/http"
 	"net/url"
@@ -13,7 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-    dab "github.com/Snawoot/go-http-digest-auth-client"
+
+	dab "github.com/Snawoot/go-http-digest-auth-client"
 	"github.com/open-horizon/FDO-support/ocs-api/outils"
 )
 
@@ -23,22 +24,22 @@ REST API server to authenticate user in order to use the FDO Owner Service (Owne
 
 // These global vars are necessary because the handler functions are not given any context
 var OcsDbDir string
-var OrgFDOVersionRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/version$`) // used for GET
-var OrgFDOVouchersRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers$`) // used for both GET and POST
-var GetFDOVoucherRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers/([^/]+)$`)       // backward compat
-var OrgFDOKeyRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/certificate/([^/]+)$`) // used for GET , THIS NEEDS TO BE UPDATED IN ORDER TO RECOGNIZE KEY TYPE
-var OrgFDORedirectRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/redirect$`) // used for GET
+var OrgFDOVersionRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/version$`)          // used for GET
+var OrgFDOVouchersRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers$`)        // used for both GET and POST
+var GetFDOVoucherRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/vouchers/([^/]+)$`) // backward compat
+var OrgFDOKeyRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/certificate/([^/]+)$`)  // used for GET , THIS NEEDS TO BE UPDATED IN ORDER TO RECOGNIZE KEY TYPE
+var OrgFDORedirectRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/redirect$`)        // used for GET
 var GetFDOTo0Regex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/to0/([^/]+)$`)
 var OrgFDOResourceRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/resource/([^/]+)$`) //used for both GET and POST
-var OrgFDOServiceInfoRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/svi$`) // used for GET
-var ExchangeUrl string                                                    // the external url, that the device needs
-var ExchangeInternalUrl string                                            // will default to ExchangeUrl
-var ExchangeInternalCertPath string                                       // will default to /home/sdouser/ocs-api-dir/keys/sdoapi.crt if not set by EXCHANGE_INTERNAL_CERT
-var ExchangeInternalRetries int                                           // the number of times to retry connecting to the exchange during startup
-var ExchangeInternalInterval int                                          // the number of seconds to wait before retrying again to connect to the exchange during startup
-var CssUrl string                                                         // the external url, that the device needs
-var PkgsFrom string                                                       // the argument to the agent-install.sh -i flag
-var CfgFileFrom string                                                    // the argument to the agent-install.sh -k flag
+var OrgFDOServiceInfoRegex = regexp.MustCompile(`^/api/orgs/([^/]+)/fdo/svi$`)           // used for GET
+var ExchangeUrl string                                                                   // the external url, that the device needs
+var ExchangeInternalUrl string                                                           // will default to ExchangeUrl
+var ExchangeInternalCertPath string                                                      // will default to /home/sdouser/ocs-api-dir/keys/sdoapi.crt if not set by EXCHANGE_INTERNAL_CERT
+var ExchangeInternalRetries int                                                          // the number of times to retry connecting to the exchange during startup
+var ExchangeInternalInterval int                                                         // the number of seconds to wait before retrying again to connect to the exchange during startup
+var CssUrl string                                                                        // the external url, that the device needs
+var PkgsFrom string                                                                      // the argument to the agent-install.sh -i flag
+var CfgFileFrom string                                                                   // the argument to the agent-install.sh -k flag
 var KeyImportLock sync.RWMutex
 
 func main() {
@@ -48,15 +49,15 @@ func main() {
 	}
 
 	var fdoTo2URL string
-    var to2Body string
+	var to2Body string
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
 	OcsDbDir = os.Args[2]
 	workingDir, err := os.Getwd()
 	if err != nil {
-            fmt.Println(err)
-        }
+		fmt.Println(err)
+	}
 	outils.SetVerbose()
 	ExchangeInternalRetries = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_RETRIES", 12) // by default a total of 1 minute of trying
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
@@ -81,106 +82,105 @@ func main() {
 	//http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/api/", apiHandler)
 
-	 // Set To2 Address on start up in FDO Owner Services
-         fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-         if fdoOwnerURL == "" {
-            log.Fatalln("HZN_FDO_API_URL is not set")
-         }
-         u, err := url.Parse(fdoOwnerURL)
-         if err != nil {
-            outils.NewHttpError(http.StatusInternalServerError, "Error parsing "+fdoOwnerURL+": "+err.Error())
-            return
-         }
-         fmt.Println("Setting To2 Address as: " + u.Hostname())
-         to2Body = (`[[null,"` + u.Hostname() + `",8042,3]]`)
-         fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
-         to2Byte := []byte(to2Body)
-         username, password := outils.GetOwnerServiceApiKey()
-         fmt.Println("This is the GET To2 Redirect API route: " + fdoTo2URL)
-         fmt.Println("Internal Digest Username: " + username)
-         fmt.Println("Internal Digest Password: " + password)
+	// Set To2 Address on start up in FDO Owner Services
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	u, err := url.Parse(fdoOwnerURL)
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error parsing "+fdoOwnerURL+": "+err.Error())
+		return
+	}
+	fmt.Println("Setting To2 Address as: " + u.Hostname())
+	to2Body = (`[[null,"` + u.Hostname() + `",8042,3]]`)
+	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
+	to2Byte := []byte(to2Body)
+	username, password := outils.GetOwnerServiceApiKey()
+	fmt.Println("This is the GET To2 Redirect API route: " + fdoTo2URL)
+	fmt.Println("Internal Digest Username: " + username)
+	fmt.Println("Internal Digest Password: " + password)
 
-         client := &http.Client{
-         		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-         }
-         resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(to2Byte))
-         if err != nil {
-            outils.NewHttpError(http.StatusInternalServerError, "Error setting To2 address: "+fdoTo2URL+": "+err.Error())
-            return
-         }
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(to2Byte))
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error setting To2 address: "+fdoTo2URL+": "+err.Error())
+		return
+	}
 
-         if resp.Body != nil {
-            defer resp.Body.Close()
-         }
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-             // Create agent-install.crt
-                 valuesDir := OcsDbDir + "/v1/values"
-                 fileName := valuesDir + "/agent-install.crt"
-                 fmt.Println("Posting agent-install.crt package: " + fileName)
-                 certFile, err := ioutil.ReadFile(fileName)
-                 if err != nil {
-                     outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
-                     return
-                 }
-                 // Post agent-install.crt in FDO Owner Services
-                 certResource :="agent-install.crt"
-             	 fdoCertURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + certResource
-                 fmt.Println("URL for agent-install.crt: " + fdoCertURL)
+	// Create agent-install.crt
+	valuesDir := OcsDbDir + "/v1/values"
+	fileName := valuesDir + "/agent-install.crt"
+	fmt.Println("Posting agent-install.crt package: " + fileName)
+	certFile, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+		return
+	}
+	// Post agent-install.crt in FDO Owner Services
+	certResource := "agent-install.crt"
+	fdoCertURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + certResource
+	fmt.Println("URL for agent-install.crt: " + fdoCertURL)
 
-                 newResp, err := client.Post(fdoCertURL, "text/plain", bytes.NewReader(certFile))
-                     if err != nil {
-                     		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+certResource+" in SVI Database: "+err.Error())
-                            return
-                     }
-                     if newResp.Body != nil {
-                             defer newResp.Body.Close()
-                     }
+	newResp, err := client.Post(fdoCertURL, "text/plain", bytes.NewReader(certFile))
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+certResource+" in SVI Database: "+err.Error())
+		return
+	}
+	if newResp.Body != nil {
+		defer newResp.Body.Close()
+	}
 
-             // Create agent-install.cfg
-                     valuesDir = OcsDbDir + "/v1/values"
-                     fileName = valuesDir + "/agent-install.cfg"
-                     fmt.Println("Posting agent-install.cfg package: " + fileName)
-                     cfgFile, err := ioutil.ReadFile(fileName)
-                     if err != nil {
-                         outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
-                         return
-                     }
-                     // Post agent-install.cfg in FDO Owner Services
-                     configResource :="agent-install.cfg"
-                 	 fdoCfgURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + configResource
-                     fmt.Println("URL for agent-install.cfg: " + fdoCfgURL)
-                     newResp, err = client.Post(fdoCfgURL, "text/plain", bytes.NewReader(cfgFile))
-                     if err != nil {
-                     		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+configResource+" in SVI Database: "+err.Error())
-                            return
-                     }
-                     if newResp.Body != nil {
-                             defer newResp.Body.Close()
-                     }
+	// Create agent-install.cfg
+	valuesDir = OcsDbDir + "/v1/values"
+	fileName = valuesDir + "/agent-install.cfg"
+	fmt.Println("Posting agent-install.cfg package: " + fileName)
+	cfgFile, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+		return
+	}
+	// Post agent-install.cfg in FDO Owner Services
+	configResource := "agent-install.cfg"
+	fdoCfgURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + configResource
+	fmt.Println("URL for agent-install.cfg: " + fdoCfgURL)
+	newResp, err = client.Post(fdoCfgURL, "text/plain", bytes.NewReader(cfgFile))
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+configResource+" in SVI Database: "+err.Error())
+		return
+	}
+	if newResp.Body != nil {
+		defer newResp.Body.Close()
+	}
 
-             // Create agent-install-wrapper
-             valuesDir = OcsDbDir + "/v1/values"
-             fileName = valuesDir + "/agent-install-wrapper.sh"
-             fmt.Println("Setting SVI package: " + fileName)
-             wrapperFile, err := ioutil.ReadFile(fileName)
-             if err != nil {
-                 outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
-                 return
-             }
-             // Post agent-install-wrapper in FDO Owner Services
-             wrapperResource :="agent-install-wrapper.sh"
-         	 fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
-             fmt.Println("URL for agent-install-wrapper package: " + fdoResourceURL)
+	// Create agent-install-wrapper
+	valuesDir = OcsDbDir + "/v1/values"
+	fileName = valuesDir + "/agent-install-wrapper.sh"
+	fmt.Println("Setting SVI package: " + fileName)
+	wrapperFile, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
+		return
+	}
+	// Post agent-install-wrapper in FDO Owner Services
+	wrapperResource := "agent-install-wrapper.sh"
+	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
+	fmt.Println("URL for agent-install-wrapper package: " + fdoResourceURL)
 
-             newResp, err = client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
-             if err != nil {
-                outils.NewHttpError(http.StatusInternalServerError, "Error posting "+wrapperResource+" in SVI Database: "+err.Error())
-                return
-             }
-             if newResp.Body != nil {
-                defer newResp.Body.Close()
-             }
-
+	newResp, err = client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
+	if err != nil {
+		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+wrapperResource+" in SVI Database: "+err.Error())
+		return
+	}
+	if newResp.Body != nil {
+		defer newResp.Body.Close()
+	}
 
 	// Get the cert to use when talking to the exchange for authentication, if set
 	if outils.IsEnvVarSet("EXCHANGE_INTERNAL_CERT") {
@@ -219,28 +219,28 @@ func main() {
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("Handling %s ...", r.URL.Path)
 	if r.Method == "GET" && r.URL.Path == "/api/version" {
-    		getVersionHandler(w, r)
+		getVersionHandler(w, r)
 	} else if r.Method == "GET" && r.URL.Path == "/api/fdo/version" {
-	    getFdoVersionHandler(w, r)
+		getFdoVersionHandler(w, r)
 	} else if matches := OrgFDOKeyRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/certificate?alias=SECP256R1
-        getFdoPublicKeyHandler(matches[1], matches[2], w, r)
+		getFdoPublicKeyHandler(matches[1], matches[2], w, r)
 	} else if matches := OrgFDOVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/vouchers
-        getFdoVouchersHandler(matches[1], w, r)
-    } else if matches := GetFDOVoucherRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid}
-        getFdoVoucherHandler(matches[1], matches[2], w, r)
+		getFdoVouchersHandler(matches[1], w, r)
+	} else if matches := GetFDOVoucherRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid}
+		getFdoVoucherHandler(matches[1], matches[2], w, r)
 	} else if matches := OrgFDOVouchersRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/vouchers
-        postFdoVoucherHandler(matches[1], w, r)
-    } else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
-        postFdoRedirectHandler(matches[1], w, r)
-    } else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
-        getFdoTo0Handler(matches[1], matches[2], w, r)
-    } else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 3 { // POST /api/orgs/{ord-id}/fdo/resource/{resourceFile}
-        postFdoResourceHandler(matches[1], matches[2], w, r)
-    } else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/resource/{resourceFile}
-        getFdoResourceHandler(matches[1], matches[2], w, r)
-    } else if matches := OrgFDOServiceInfoRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
-        postFdoSVIHandler(matches[1], w, r)
-    } else {
+		postFdoVoucherHandler(matches[1], w, r)
+	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+		postFdoRedirectHandler(matches[1], w, r)
+	} else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
+		getFdoTo0Handler(matches[1], matches[2], w, r)
+	} else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 3 { // POST /api/orgs/{ord-id}/fdo/resource/{resourceFile}
+		postFdoResourceHandler(matches[1], matches[2], w, r)
+	} else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/resource/{resourceFile}
+		getFdoResourceHandler(matches[1], matches[2], w, r)
+	} else if matches := OrgFDOServiceInfoRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+		postFdoSVIHandler(matches[1], w, r)
+	} else {
 		http.Error(w, "Route "+r.URL.Path+" not found", http.StatusNotFound)
 	}
 	// Note: we used to also support a route that would allow an admin to change the config (i.e. run createConfigFiles()) w/o restarting
@@ -268,25 +268,24 @@ func getVersionHandler(w http.ResponseWriter, r *http.Request) {
 func getFdoVersionHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/fdo/version ...")
 
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-    if fdoOwnerURL == "" {
-        log.Fatalln("HZN_FDO_API_URL is not set")
-    }
-
-    resp, err := http.Get(fdoOwnerURL + "/health")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-    body, err := ioutil.ReadAll(resp.Body)
-       if err != nil {
-          http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
-          return
-       }
-     w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-     w.Header().Set("Content-Type", "text/plain")
-     outils.WriteResponse(http.StatusOK, w, body)
+	resp, err := http.Get(fdoOwnerURL + "/health")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, body)
 
 }
 
@@ -295,9 +294,9 @@ func getFdoVersionHandler(w http.ResponseWriter, r *http.Request) {
 func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/certificate/%s ...", orgId)
 
-    var respBodyBytes []byte
-    //var requestBodyBytes []byte
-    var fdoPublicKeyURL string
+	var respBodyBytes []byte
+	//var requestBodyBytes []byte
+	var fdoPublicKeyURL string
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
 	if httpErr != nil {
@@ -313,43 +312,42 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 		return
 	}
 
+	if (publicKeyType) != "SECP256R1" && (publicKeyType) != "SECP384R1" && (publicKeyType) != "RSAPKCS3072" && (publicKeyType) != "RSAPKCS2048" && (publicKeyType) != "RSA2048RESTR" {
+		http.Error(w, "Public key type must be one of these supported alias': SECP256R1, SECP384R1, RSAPKCS3072, RSAPKCS2048, RSA2048RESTR", http.StatusBadRequest)
+		return
+	}
 
-    if (publicKeyType) != "SECP256R1" && (publicKeyType) != "SECP384R1" && (publicKeyType) != "RSAPKCS3072" && (publicKeyType) != "RSAPKCS2048" && (publicKeyType) != "RSA2048RESTR" {
-    	http.Error(w, "Public key type must be one of these supported alias': SECP256R1, SECP384R1, RSAPKCS3072, RSAPKCS2048, RSA2048RESTR", http.StatusBadRequest)
-    	return
-}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
+	username, password := outils.GetOwnerServiceApiKey()
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-            	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_API_URL is not set")
-                	}
-    fdoPublicKeyURL = fdoOwnerURL + "/api/v1/certificate?alias=" + publicKeyType
-    username, password := outils.GetOwnerServiceApiKey()
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Get(fdoPublicKeyURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    client := &http.Client{
-        Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-    }
-    resp, err := client.Get(fdoPublicKeyURL)
-    if err != nil {
-    		http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-    	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-    	if resp.Body != nil {
-    		defer resp.Body.Close()
-    	}
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
-    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
-    	if err != nil {
-    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
-            return
-    	}
-    	sb := string(respBodyBytes)
-        log.Printf(sb)
-
-    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-        w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //IMPORT VOUCHER
@@ -359,8 +357,8 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers ... ...", orgId)
 
 	var respBodyBytes []byte
-    var bodyBytes []byte
-    var fdoVoucherURL string
+	var bodyBytes []byte
+	var fdoVoucherURL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -379,166 +377,160 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	}
 
 	// Verify content type
-    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
-    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
-    	http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+		//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
-    	if err != nil {
-    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-    		return
-    	}
+	if err != nil {
+		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-        	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_API_URL is not set")
-            	}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 	username, password := outils.GetOwnerServiceApiKey()
 
-    //Digest auth request to import voucher
-    client := &http.Client{
-             		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-             }
+	//Digest auth request to import voucher
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
 
-             resp, err := client.Post(fdoVoucherURL, "text/plain", bytes.NewReader(bodyBytes))
-             if err != nil {
-                     http.Error(w, err.Error(), http.StatusBadRequest)
-                     return
-                 }
+	resp, err := client.Post(fdoVoucherURL, "text/plain", bytes.NewReader(bodyBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-             if resp.Body != nil {
-                defer resp.Body.Close()
-             }
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-             respBodyBytes, err = ioutil.ReadAll(resp.Body)
-                	if err != nil {
-                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
-                        return
-                	}
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    //string device UUID
-    deviceUuid := string(respBodyBytes)
-    outils.Verbose("POST /api/orgs/%s/fdo/vouchers: device UUID: %s", deviceOrgId, deviceUuid)
+	//string device UUID
+	deviceUuid := string(respBodyBytes)
+	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: device UUID: %s", deviceOrgId, deviceUuid)
 
-    // Create the device directory in the OCS DB
-    deviceDir := OcsDbDir + "/v1/devices/" + deviceUuid
-    if err := os.MkdirAll(deviceDir, 0750); err != nil {
-        http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// Create the device directory in the OCS DB
+	deviceDir := OcsDbDir + "/v1/devices/" + deviceUuid
+	if err := os.MkdirAll(deviceDir, 0750); err != nil {
+		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Put the voucher in the OCS DB
-    fileName := deviceDir + "/ownership_voucher.txt"
-    outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
-    if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
-        http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// Put the voucher in the OCS DB
+	fileName := deviceDir + "/ownership_voucher.txt"
+	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
+	if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
+		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Create orgid.txt file to identify what org this device/voucher is part of
-    fileName = deviceDir + "/orgid.txt"
-    outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
-    if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
-        http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	// Create orgid.txt file to identify what org this device/voucher is part of
+	fileName = deviceDir + "/orgid.txt"
+	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
+	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
+		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Generate a node token
-    nodeToken, httpErr := outils.GenerateNodeToken()
-    if httpErr != nil {
-        http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	// Generate a node token
+	nodeToken, httpErr := outils.GenerateNodeToken()
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
+	// Create exec file
+	// Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
+	execCmd := fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom)
+	fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
+	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
+	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
+		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-         // Create exec file
-         // Note: currently agent-install-wrapper.sh requires that the flags be in this order!!!!
-        execCmd := fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom)
-        fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
-        outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-        if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
-            http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
-            return
-        }
+	// Post device specified exec file in FDO Owner Services
+	valuesDir := OcsDbDir + "/v1/values"
+	fileName = valuesDir + "/" + deviceUuid + "_exec"
+	fmt.Println("Device Specific Wrapper: " + fileName)
+	wrapperFile, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		http.Error(w, "Error reading "+fileName+": "+err.Error(), http.StatusNotFound)
+		return
+	}
+	// Create agent-install-wrapper
+	wrapperResource := deviceUuid + "_exec"
+	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
+	fmt.Println("URL for device specific exec file: " + fdoResourceURL)
 
-        // Post device specified exec file in FDO Owner Services
-            valuesDir := OcsDbDir + "/v1/values"
-            fileName = valuesDir + "/" + deviceUuid + "_exec"
-            fmt.Println("Device Specific Wrapper: " + fileName)
-            wrapperFile, err := ioutil.ReadFile(fileName)
-            if err != nil {
-                http.Error(w, "Error reading "+fileName+": "+err.Error(), http.StatusNotFound)
-                return
-            }
-            // Create agent-install-wrapper
-            wrapperResource := deviceUuid + "_exec"
-        	fdoResourceURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + wrapperResource
-            fmt.Println("URL for device specific exec file: " + fdoResourceURL)
+	newResp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-        newResp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(wrapperFile))
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        }
+	if newResp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-        if newResp.Body != nil {
-            defer resp.Body.Close()
-        }
+	// Set SVI and agent-install-wrapper.sh arguments in FDO Owner Services
+	// post specified exec file
 
-
-
-
-    // Set SVI and agent-install-wrapper.sh arguments in FDO Owner Services
-    // post specified exec file
-
-    sviBody := (`[{"filedesc" : "agent-install.crt","resource" : "agent-install.crt"},
+	sviBody := (`[{"filedesc" : "agent-install.crt","resource" : "agent-install.crt"},
             {"filedesc" : "agent-install.cfg","resource" : "agent-install.cfg"},
             {"filedesc" : "agent-install-wrapper.sh","resource" : "agent-install-wrapper.sh"},
             {"filedesc" : "setup.sh","resource" : "$(guid)_exec"},
             {"exec" : ["bash","setup.sh"] }]`)
 
+	fmt.Println("SVI request body: " + sviBody)
+	sviByte := []byte(sviBody)
 
-    fmt.Println("SVI request body: " + sviBody)
-    sviByte := []byte(sviBody)
+	fdoSVIURL := fdoOwnerURL + "/api/v1/owner/svi"
 
-    fdoSVIURL := fdoOwnerURL + "/api/v1/owner/svi"
+	client = &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
 
-    client = &http.Client{
-        Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-    }
+	postResponse, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(sviByte))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    postResponse, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(sviByte))
-                 if err != nil {
-                    http.Error(w, err.Error(), http.StatusBadRequest)
-                    return
-                 }
+	if postResponse.Body != nil {
+		defer resp.Body.Close()
+	}
 
-                 if postResponse.Body != nil {
-                    defer resp.Body.Close()
-                 }
+	respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    respBodyBytes, err = ioutil.ReadAll(postResponse.Body)
-    if err != nil {
-        http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-        return
-    }
+	lk := string(respBodyBytes)
+	log.Printf(lk)
 
-    lk := string(respBodyBytes)
-    log.Printf(lk)
+	// Send response to client
+	respBody := map[string]interface{}{
+		"deviceGuid": deviceUuid,
+		"nodeToken":  nodeToken,
+	}
 
-
-    // Send response to client
-    respBody := map[string]interface{}{
-                "deviceGuid": deviceUuid,
-                "nodeToken":  nodeToken,
-    }
-
-    w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-    w.Header().Set("Content-Type", "text/plain")
-    outils.WriteJsonResponse(http.StatusOK, w, respBody)
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteJsonResponse(http.StatusOK, w, respBody)
 
 }
 
@@ -547,9 +539,9 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers ...", orgId)
 
-    //var respBodyBytes []byte
-    //var requestBodyBytes []byte
-    var fdoVoucherURL string
+	//var respBodyBytes []byte
+	//var requestBodyBytes []byte
+	var fdoVoucherURL string
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
 	if httpErr != nil {
@@ -565,68 +557,66 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-            	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_API_URL is not set")
-                	}
-    fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers"
 
-    username, password := outils.GetOwnerServiceApiKey()
+	username, password := outils.GetOwnerServiceApiKey()
 
-    client := &http.Client{
-            Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-    }
-    resp, err := client.Get(fdoVoucherURL)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-    if resp.Body != nil {
-        defer resp.Body.Close()
-    }
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Get(fdoVoucherURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
+	//     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	//     	if err != nil {
+	//     		log.Fatalln(err)
+	//     	}
 
-//     	respBodyBytes, err = ioutil.ReadAll(resp.Body)
-//     	if err != nil {
-//     		log.Fatalln(err)
-//     	}
+	// Read the v1/devices/ directory in the db for multitenancy
+	vouchersDirName := OcsDbDir + "/v1/devices"
+	deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+	if err != nil {
+		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
- // Read the v1/devices/ directory in the db for multitenancy
-                vouchersDirName := OcsDbDir + "/v1/devices"
-                deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
-                if err != nil {
-                        http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
-                        return
-                }
+	vouchers := []string{}
+	for _, dir := range deviceDirs {
+		if dir.IsDir() {
+			// Look inside the device dir for orgid.txt to see if is part of the org we are listing
+			orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
+			if httpErr != nil {
+				http.Error(w, httpErr.Error(), httpErr.Code)
+				return
+			}
+			if orgidTxtStr == deviceOrgId { // this device is in our org
+				vouchers = append(vouchers, dir.Name())
+			}
+		}
+	}
 
-                vouchers := []string{}
-                for _, dir := range deviceDirs {
-                        if dir.IsDir() {
-                                // Look inside the device dir for orgid.txt to see if is part of the org we are listing
-                                orgidTxtStr, httpErr := getOrgidTxtStr(dir.Name())
-                                if httpErr != nil {
-                                        http.Error(w, httpErr.Error(), httpErr.Code)
-                                        return
-                                }
-                                if orgidTxtStr == deviceOrgId { // this device is in our org
-                                        vouchers = append(vouchers, dir.Name())
-                                }
-                        }
-                }
+	//Verify that each value in vouchers is also in respBodyBytes - THIS IS NOT WORKING RIGHT
 
-        //Verify that each value in vouchers is also in respBodyBytes - THIS IS NOT WORKING RIGHT
+	//         dbQuery := bytes.NewBuffer(respBodyBytes).String()
+	//         vouchersString := strings.Join(vouchers,"\n")
+	//         fmt.Println("FDO Db Query: " + dbQuery)
+	//         fmt.Println("Index Query: " + vouchersString)
+	//         result := vouchersString == dbQuery
+	//         fmt.Println(result)
 
-//         dbQuery := bytes.NewBuffer(respBodyBytes).String()
-//         vouchersString := strings.Join(vouchers,"\n")
-//         fmt.Println("FDO Db Query: " + dbQuery)
-//         fmt.Println("Index Query: " + vouchersString)
-//         result := vouchersString == dbQuery
-//         fmt.Println(result)
-
-
-        w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-        w.Header().Set("Content-Type", "text/plain")
-        outils.WriteJsonResponse(http.StatusOK, w, vouchers)
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteJsonResponse(http.StatusOK, w, vouchers)
 
 }
 
@@ -636,9 +626,9 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers/%s ...", orgId)
 
-    var respBodyBytes []byte
-    //var requestBodyBytes []byte
-    var fdoVoucherURL string
+	var respBodyBytes []byte
+	//var requestBodyBytes []byte
+	var fdoVoucherURL string
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
 	if httpErr != nil {
@@ -654,69 +644,68 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-            	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_API_URL is not set")
-                	}
-    fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers/" + deviceUuid
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	fdoVoucherURL = fdoOwnerURL + "/api/v1/owner/vouchers/" + deviceUuid
 
-    //check if deviceUuid is found in the directory index first, if it is then continue with the request.
-    //if not, then return error
-    // Read voucher.json from the db
-    voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/ownership_voucher.txt"
-    voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
-    if err != nil {
-            		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
-            		return
-    }
+	//check if deviceUuid is found in the directory index first, if it is then continue with the request.
+	//if not, then return error
+	// Read voucher.json from the db
+	voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/ownership_voucher.txt"
+	voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
+	if err != nil {
+		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
+		return
+	}
 
-    //Getting voucher from FDO DB
-    username, password := outils.GetOwnerServiceApiKey()
+	//Getting voucher from FDO DB
+	username, password := outils.GetOwnerServiceApiKey()
 
-    client := &http.Client{
-                Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-        }
-        resp, err := client.Get(fdoVoucherURL)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        }
-        if resp.Body != nil {
-            defer resp.Body.Close()
-        }
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Get(fdoVoucherURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
-    	if err != nil {
-    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-            return
-    	}
-    	lk := string(respBodyBytes)
-        log.Printf(lk)
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	lk := string(respBodyBytes)
+	log.Printf(lk)
 
-        	// Confirm this voucher/device is in the client's org. Doing this check after getting the voucher, because if the
-        	// voucher doesn't exist, we want them get that error, rather than that it is not in their org
-        	orgidTxtStr, httpErr := getOrgidTxtStr(deviceUuid)
-        	if httpErr != nil {
-        		http.Error(w, httpErr.Error(), httpErr.Code)
-        		return
-        	}
-        	if orgidTxtStr != deviceOrgId { // this device is in our org
-        		http.Error(w, "Device "+deviceUuid+" is not in org "+deviceOrgId, http.StatusForbidden)
-        		return
-        	}
+	// Confirm this voucher/device is in the client's org. Doing this check after getting the voucher, because if the
+	// voucher doesn't exist, we want them get that error, rather than that it is not in their org
+	orgidTxtStr, httpErr := getOrgidTxtStr(deviceUuid)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+	if orgidTxtStr != deviceOrgId { // this device is in our org
+		http.Error(w, "Device "+deviceUuid+" is not in org "+deviceOrgId, http.StatusForbidden)
+		return
+	}
 
-         //Verify that the value in voucherBytes is also in respBodyBytes - THIS IS NOT WORKING RIGHT
+	//Verify that the value in voucherBytes is also in respBodyBytes - THIS IS NOT WORKING RIGHT
 
-//                 dbQuery := bytes.NewBuffer(respBodyBytes).String()
-//                 //fmt.Println("Db Query: " + dbQuery)
-//                 //fmt.Println("Index Query: " + string(voucherBytes))
-//                 result := string(voucherBytes) == dbQuery
-//                 fmt.Println(result)
+	//                 dbQuery := bytes.NewBuffer(respBodyBytes).String()
+	//                 //fmt.Println("Db Query: " + dbQuery)
+	//                 //fmt.Println("Index Query: " + string(voucherBytes))
+	//                 result := string(voucherBytes) == dbQuery
+	//                 fmt.Println(result)
 
-
-    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-        w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, voucherBytes)
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, voucherBytes)
 }
 
 //============= POST /api/orgs/{ord-id}/fdo/redirect =============
@@ -725,8 +714,8 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 	outils.Verbose("POST /api/orgs/%s/fdo/redirect ... ...", orgId)
 
 	var respBodyBytes []byte
-    var bodyBytes []byte
-    var fdoTo2URL string
+	var bodyBytes []byte
+	var fdoTo2URL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -745,54 +734,54 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 	}
 
 	// Verify content type
-    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
-    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
-    	http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+		//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
-    	if err != nil {
-    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-    		return
-    	}
+	if err != nil {
+		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    st := string(bodyBytes)
-    log.Printf(st)
+	st := string(bodyBytes)
+	log.Printf(st)
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-        	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_API_URL is not set")
-            	}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
-    username, password := outils.GetOwnerServiceApiKey()
+	username, password := outils.GetOwnerServiceApiKey()
 
-    client := &http.Client{
-                 		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-                 }
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
 
-                 resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(bodyBytes))
-                 if err != nil {
-                    http.Error(w, err.Error(), http.StatusBadRequest)
-                    return
-                 }
+	resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(bodyBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-                 if resp.Body != nil {
-                    defer resp.Body.Close()
-                 }
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-            respBodyBytes, err = ioutil.ReadAll(resp.Body)
-                	if err != nil {
-                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-                        return
-                	}
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-        sb := string(respBodyBytes)
-        log.Printf(sb)
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
 	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-    w.Header().Set("Content-Type", "text/plain")
-    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //============= GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid} =============
@@ -800,9 +789,9 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/to0/%s ...", orgId)
 
-    var respBodyBytes []byte
-    //var requestBodyBytes []byte
-    var fdoTo0URL string
+	var respBodyBytes []byte
+	//var requestBodyBytes []byte
+	var fdoTo0URL string
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
 	if httpErr != nil {
@@ -818,35 +807,35 @@ func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r 
 		return
 	}
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-            	if fdoOwnerURL == "" {
-                		log.Fatalln("HZN_FDO_API_URL is not set")
-                	}
-    fdoTo0URL = fdoOwnerURL + "/api/v1/to0/" + deviceUuid
-    username, password := outils.GetOwnerServiceApiKey()
-    client := &http.Client{
-                    Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-            }
-            resp, err := client.Get(fdoTo0URL)
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusBadRequest)
-                return
-            }
-            if resp.Body != nil {
-                defer resp.Body.Close()
-            }
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	fdoTo0URL = fdoOwnerURL + "/api/v1/to0/" + deviceUuid
+	username, password := outils.GetOwnerServiceApiKey()
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Get(fdoTo0URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-    	respBodyBytes, err = ioutil.ReadAll(resp.Body)
-    	if err != nil {
-    		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-            return
-    	}
-    	sb := string(respBodyBytes)
-        log.Printf(sb)
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
-    	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-        w.Header().Set("Content-Type", "text/plain")
-        outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //IMPORT RESOURCE FILE (agent-install-wrapper.sh) TO OWNER DB FOR SERVICE INFO PACKAGE
@@ -856,8 +845,8 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 	outils.Verbose("POST /api/orgs/%s/fdo/resource/%s ... ...", orgId)
 
 	var respBodyBytes []byte
-    var bodyBytes []byte
-    var fdoResourceURL string
+	var bodyBytes []byte
+	var fdoResourceURL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -876,54 +865,54 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 	}
 
 	// Verify content type
-    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
-    	http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
-    	if err != nil {
-    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-    		return
-    	}
+	if err != nil {
+		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    st := string(bodyBytes)
-    log.Printf(st)
+	st := string(bodyBytes)
+	log.Printf(st)
 
-    //resourceFile in URL must = file name in request body
+	//resourceFile in URL must = file name in request body
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-        	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_API_URL is not set")
-            	}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
-    username, password := outils.GetOwnerServiceApiKey()
-    client := &http.Client{
-                     		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-                     }
+	username, password := outils.GetOwnerServiceApiKey()
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
 
-                     resp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(bodyBytes))
-                     if err != nil {
-                        http.Error(w, err.Error(), http.StatusBadRequest)
-                        return
-                     }
+	resp, err := client.Post(fdoResourceURL, "text/plain", bytes.NewReader(bodyBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-                     if resp.Body != nil {
-                        defer resp.Body.Close()
-                     }
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-            respBodyBytes, err = ioutil.ReadAll(resp.Body)
-                	if err != nil {
-                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-                        return
-                	}
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-        sb := string(respBodyBytes)
-        log.Printf(sb)
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
 	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-    w.Header().Set("Content-Type", "text/plain")
-    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //============= GET /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
@@ -932,8 +921,8 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
 	outils.Verbose("GET /api/orgs/%s/fdo/resource/%s ... ...", orgId)
 
 	var respBodyBytes []byte
-    var bodyBytes []byte
-    var fdoResourceURL string
+	var bodyBytes []byte
+	var fdoResourceURL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -952,53 +941,53 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
 	}
 
 	// Verify content type
-    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
-    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
-    	http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+		//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
-    	if err != nil {
-    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-    		return
-    	}
+	if err != nil {
+		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    st := string(bodyBytes)
-    log.Printf(st)
+	st := string(bodyBytes)
+	log.Printf(st)
 
-    //resourceFile in URL must = file name in request body
+	//resourceFile in URL must = file name in request body
 
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-        	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_API_URL is not set")
-            	}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 	fdoResourceURL = fdoOwnerURL + "/api/v1/owner/resource?filename=" + resourceFile
-    username, password := outils.GetOwnerServiceApiKey()
-    client := &http.Client{
-                    Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-            }
-            resp, err := client.Get(fdoResourceURL)
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusBadRequest)
-                return
-            }
-            if resp.Body != nil {
-                defer resp.Body.Close()
-            }
+	username, password := outils.GetOwnerServiceApiKey()
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+	resp, err := client.Get(fdoResourceURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-            respBodyBytes, err = ioutil.ReadAll(resp.Body)
-                	if err != nil {
-                		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-                        return
-                	}
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-        sb := string(respBodyBytes)
-        log.Printf(sb)
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
 	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-    w.Header().Set("Content-Type", "text/plain")
-    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //============= POST /api/orgs/{ord-id}/fdo/svi =============
@@ -1007,8 +996,8 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("POST /api/orgs/%s/fdo/svi ... ...", orgId)
 
 	var respBodyBytes []byte
-    var bodyBytes []byte
-    var fdoSVIURL string
+	var bodyBytes []byte
+	var fdoSVIURL string
 
 	// Determine the org id to use for the device, based on various inputs
 	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
@@ -1027,51 +1016,50 @@ func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify content type
-    if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
-    	//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
-    	http.Error(w, httpErr.Error(), httpErr.Code)
-        return
-    }
+	if httpErr := outils.IsValidPostPlainTxt(r); httpErr != nil {
+		//http.Error(w, "Error: This API only accepts plain text", http.StatusBadRequest)
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body) // we need the request body so get it as bytes
-    	if err != nil {
-    		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
-    		return
-    	}
+	if err != nil {
+		http.Error(w, "Error reading the request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
-
-    fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
-        	if fdoOwnerURL == "" {
-            		log.Fatalln("HZN_FDO_API_URL is not set")
-            	}
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
 	fdoSVIURL = fdoOwnerURL + "/api/v1/owner/svi"
-    username, password := outils.GetOwnerServiceApiKey()
-    client := &http.Client{
-                         		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
-                         }
+	username, password := outils.GetOwnerServiceApiKey()
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
 
-                         resp, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(bodyBytes))
-                         if err != nil {
-                            http.Error(w, err.Error(), http.StatusBadRequest)
-                            return
-                         }
+	resp, err := client.Post(fdoSVIURL, "text/plain", bytes.NewReader(bodyBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-                         if resp.Body != nil {
-                            defer resp.Body.Close()
-                         }
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
-            respBodyBytes, err = ioutil.ReadAll(resp.Body)
-            if err != nil {
-                http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
-                return
-            }
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-        sb := string(respBodyBytes)
-        log.Printf(sb)
+	sb := string(respBodyBytes)
+	log.Printf(sb)
 
 	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
-    w.Header().Set("Content-Type", "text/plain")
-    outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
 //============= Non-Route Functions =============
@@ -1252,4 +1240,3 @@ func createConfigFiles() *outils.HttpError {
 
 	return nil
 }
-
