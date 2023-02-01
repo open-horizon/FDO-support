@@ -83,18 +83,16 @@ func main() {
 
 	// Set To2 Address on start up in FDO Owner Services
     fdoTo2Host, fdoTo2Port := outils.GetTo2OwnerHost()
+    fmt.Println("Setting To2 Address as: " + fdoTo2Host + ":" + fdoTo2Port)
 	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
 	if fdoOwnerURL == "" {
 		log.Fatalln("HZN_FDO_API_URL is not set")
 	}
-	fmt.Println("Setting To2 Address as: " + fdoTo2Host + ":" + fdoTo2Port)
 	to2Body = (`[[null,"` + fdoTo2Host + `",` + fdoTo2Port + `,3]]`)
 	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
 	to2Byte := []byte(to2Body)
 	username, password := outils.GetOwnerServiceApiKey()
 	fmt.Println("This is the GET To2 Redirect API route: " + fdoTo2URL)
-	fmt.Println("Internal Digest Username: " + username)
-	fmt.Println("Internal Digest Password: " + password)
 
 	client := &http.Client{
 		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
@@ -309,6 +307,7 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 		return
 	}
 
+    //Only 5 public key alias types allowed
 	if (publicKeyType) != "SECP256R1" && (publicKeyType) != "SECP384R1" && (publicKeyType) != "RSAPKCS3072" && (publicKeyType) != "RSAPKCS2048" && (publicKeyType) != "RSA2048RESTR" {
 		http.Error(w, "Public key type must be one of these supported alias': SECP256R1, SECP384R1, RSAPKCS3072, RSAPKCS2048, RSA2048RESTR", http.StatusBadRequest)
 		return
