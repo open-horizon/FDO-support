@@ -602,6 +602,16 @@ func GetOwnerServiceApiKey() (string, string) {
 
 	return SplitIdToken(apiKey)
 }
+
+func GetTo2OwnerHost() (string, string) {
+	To2Host := os.Getenv("FDO_OPS_SVC_HOST")
+	if To2Host == "" {
+		log.Fatalln("FDO_OPS_SVC_HOST NOT SET")
+	}
+
+	return SplitIdToken(To2Host)
+}
+
 func SplitIdToken(idToken string) (id, token string) {
 	parts := strings.SplitN(idToken, ":", 2)
 	id = parts[0] // SplitN will always at least return 1 element

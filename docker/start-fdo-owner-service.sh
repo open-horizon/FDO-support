@@ -3,7 +3,6 @@
 # Used to start the FDO Owner and RV service the Horizon management hub (IoT platform/owner) needs.
 # Defaults/constants
 ownerPortDefault='8042'
-rvPortDefault='8040'
 ocsApiPortDefault='9008'
 
 # These can be passed in via CLI args or env vars
@@ -19,7 +18,6 @@ FDO_API_PWD="${FDO_API_PWD:-$random_pass}"
 ownerApiPort="${1:-$ownerPortDefault}"  # precedence: arg, or tls port, or non-tls port, or default
 ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
-rvPort=${FDO_RV_PORT:-$rvPortDefault}
 FDO_DB_USER=${FDO_DB_USER:-"fdouser"}
 FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-"fdouser"}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$(hostname):$ownerApiPort"}
@@ -83,8 +81,8 @@ isDockerComposeAtLeast() {
 }
 
 ###### MAIN CODE ######
-if [[ -z "$FDO_API_PWD" || -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" || -z "$HZN_FDO_API_URL" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: FDO_API_PWD, HZN_EXCHANGE_URL, HZN_FSS_CSSURL, HZN_FDO_API_URL"
+if [[ -z "$FDO_API_PWD" || -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" || -z "$HZN_FDO_API_URL" || -z "$FDO_OPS_SVC_HOST" ]]; then
+    echo "Error: These environment variable must be set to access Owner services APIs: FDO_API_PWD, HZN_EXCHANGE_URL, HZN_FSS_CSSURL, HZN_FDO_API_URL, FDO_OPS_SVC_HOST"
     exit 0
 fi
 
@@ -104,7 +102,9 @@ if [[ -z "$FDO_DB_USER" || -z "$FDO_DB_PASSWORD" || -z "$FDO_DB_URL" ]]; then
     exit 0
 fi
 
-echo "Using ports: Owner Service: $ownerPort"
+echo "Using ports: OPS: $ownerPortDefault, OCS-API: $ocsApiPort"
+echo "Using external FDO_OPS_SVC_HOST: $FDO_OPS_SVC_HOST (for now only used for external OPS host)"
+
 
 # Run key generation script
 # Declare an array of string with type
@@ -116,7 +116,6 @@ for val in ${ScriptArray[@]}; do
    (cd $workingDir/$deviceBinaryDir/scripts && $val)
 done
 
-echo "Running key generation script..."
 # Replacing component credentials
 (cd $workingDir/$deviceBinaryDir/scripts && chmod 777 secrets/server-key.pem)
 (cd $workingDir/$deviceBinaryDir/scripts && cp -r ./secrets/. ../owner/secrets)
