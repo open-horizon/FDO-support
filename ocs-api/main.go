@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,17 +82,13 @@ func main() {
 	http.HandleFunc("/api/", apiHandler)
 
 	// Set To2 Address on start up in FDO Owner Services
+    fdoTo2Host, fdoTo2Port := outils.GetTo2OwnerHost()
 	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
 	if fdoOwnerURL == "" {
 		log.Fatalln("HZN_FDO_API_URL is not set")
 	}
-	u, err := url.Parse(fdoOwnerURL)
-	if err != nil {
-		outils.NewHttpError(http.StatusInternalServerError, "Error parsing "+fdoOwnerURL+": "+err.Error())
-		return
-	}
-	fmt.Println("Setting To2 Address as: " + u.Hostname())
-	to2Body = (`[[null,"` + u.Hostname() + `",8042,3]]`)
+	fmt.Println("Setting To2 Address as: " + fdoTo2Host + ":" + fdoTo2Port)
+	to2Body = (`[[null,"` + fdoTo2Host + `",` + fdoTo2Port + `,3]]`)
 	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
 	to2Byte := []byte(to2Body)
 	username, password := outils.GetOwnerServiceApiKey()
@@ -232,6 +227,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		postFdoVoucherHandler(matches[1], w, r)
 	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
 		postFdoRedirectHandler(matches[1], w, r)
+	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+    	getFdoRedirectHandler(matches[1], w, r)
 	} else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
 		getFdoTo0Handler(matches[1], matches[2], w, r)
 	} else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 3 { // POST /api/orgs/{ord-id}/fdo/resource/{resourceFile}
@@ -761,6 +758,65 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 	}
 
 	resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(bodyBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	respBodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Error reading the response body: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sb := string(respBodyBytes)
+	log.Printf(sb)
+
+	w.WriteHeader(http.StatusOK) // seems like this has to be before writing the body
+	w.Header().Set("Content-Type", "text/plain")
+	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
+}
+
+//============= GET /api/orgs/{ord-id}/fdo/redirect =============
+// Get the Owner Services TO2 address
+func getFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request) {
+	outils.Verbose("GET /api/orgs/%s/fdo/redirect ... ...", orgId)
+
+	var respBodyBytes []byte
+	var fdoTo2URL string
+
+	// Determine the org id to use for the device, based on various inputs
+	deviceOrgId, httpErr := getDeviceOrgId(orgId, r)
+	if httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	}
+
+	// Authenticate this user with the exchange
+	if authenticated, _, httpErr := outils.ExchangeAuthenticate(r, ExchangeInternalUrl, deviceOrgId, ExchangeInternalCertPath); httpErr != nil {
+		http.Error(w, httpErr.Error(), httpErr.Code)
+		return
+	} else if !authenticated {
+		http.Error(w, "invalid exchange credentials provided", http.StatusUnauthorized)
+		return
+	}
+
+	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
+	if fdoOwnerURL == "" {
+		log.Fatalln("HZN_FDO_API_URL is not set")
+	}
+	fdoTo2URL = fdoOwnerURL + "/api/v1/owner/redirect"
+	username, password := outils.GetOwnerServiceApiKey()
+
+	client := &http.Client{
+		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+
+	resp, err := client.Get(fdoTo2URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

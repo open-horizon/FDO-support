@@ -11,10 +11,12 @@ Required environment variables:
   HZN_EXCHANGE_URL - the external URL of the exchange (used for authentication delegation and in the configuration of the device)
   HZN_FSS_CSSURL - the external URL of CSS (used in the configuration of the device)
   HZN_MGMT_HUB_CERT - the base64 encoded content of the management hub cluster ingress self-signed certificate (can be set to 'N/A' if the mgmt hub does not require a cert). If set, this certificate is given to the edge nodes in the HZN_MGMT_HUB_CERT_PATH variable.
+  FDO_DB_PASSWORD - The password of the postgresdb FDO will be connecting to
+  FDO_DB_USER - The username of the postgresdb FDO will be connecting to
+  FDO_DB_URL - The URL of the postgresdb FDO will be connecting to
 Recommended environment variables:
-  FDO_OCS_SVC_HOST - external hostname or IP that the RV should tell the device to reach OPS at. Defaults to the host's hostname but that is only sufficient if it is resolvable and externally accessible.
+  FDO_OPS_SVC_HOST - external hostname or IP that the RV should tell the device to reach OPS at. Defaults to the host's hostname but that is only sufficient if it is resolvable and externally accessible.
 Additional environment variables (that do not usually need to be set):
-  FDO_RV_PORT - port number RV should listen on *inside* the container. Default is 8040.
   FDO_OPS_PORT - port number OPS should listen on *inside* the container. Default is 8042.
   FDO_OPS_EXTERNAL_PORT - external port number that RV should tell the device to reach OPS at. Defaults to the internal OPS port number.
   FDO_OCS_SVC_PORT - port number OCS-API should listen on for HTTP. Default is 9008.
@@ -50,7 +52,7 @@ fi
 
 EXCHANGE_INTERNAL_CERT="${EXCHANGE_INTERNAL_CERT:-$HZN_MGMT_HUB_CERT}"
 VERSION="${1:-latest}"
-
+FDO_OPS_SVC_HOST=${FDO_OPS_SVC_HOST:-$(hostname)}
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-openhorizon}
 FDO_DOCKER_IMAGE=${FDO_DOCKER_IMAGE:-fdo-owner-services}
@@ -63,7 +65,6 @@ FDO_OCS_DB_CONTAINER_DIR=${FDO_OCS_DB_CONTAINER_DIR:-$containerHome/ocs/config/d
 export FDO_OCS_SVC_PORT=${FDO_OCS_SVC_PORT:-9008}
 export FDO_OCS_SVC_TLS_PORT=${FDO_OCS_SVC_TLS_PORT:-$FDO_OCS_SVC_PORT}
 #export SDO_API_CERT_PATH=${SDO_API_CERT_PATH:-/home/fdouser/ocs-api-dir/keys}   # this is the path *within* the container. Export SDO_API_CERT_HOST_PATH to use a cert/key.
-export FDO_RV_PORT=${FDO_RV_PORT:-8040}   # the port RV should listen on *inside* the container
 export FDO_OPS_PORT=${FDO_OPS_PORT:-8042}   # the port OPS should listen on *inside* the container. FDO_API_PORT or HZN_FDO_API_URL
 export FDO_OPS_EXTERNAL_PORT=${FDO_OPS_EXTERNAL_PORT:-$FDO_OPS_PORT}   # the external port the device should use to contact OPS
 export dbPort=${FDO_DB_PORT:-5432}
@@ -129,4 +130,4 @@ else
 fi
 
 # Run the service container --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" $privateKeyMount $certKeyMount
-docker run --name $FDO_DOCKER_IMAGE -d --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" -p $portNum:$portNum -p $FDO_OPS_PORT:$FDO_OPS_PORT -e "FDO_DB_PASSWORD:$FDO_DB_PASSWORD" -e "FDO_DB_USER:$FDO_DB_USER" -e "FDO_DB_URL=$FDO_DB_URL" -e "HZN_FDO_API_URL=$HZN_FDO_API_URL" -e "FDO_API_PWD=$FDO_API_PWD" -e "FDO_OCS_DB_PATH=$FDO_OCS_DB_CONTAINER_DIR" -e "FDO_OCS_SVC_PORT=$FDO_OCS_SVC_PORT" -e "FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_TLS_PORT" -e "FDO_SVC_CERT_PATH=$FDO_SVC_CERT_PATH" -e "FDO_RV_PORT=$FDO_RV_PORT" -e "FDO_OPS_PORT=$FDO_OPS_PORT" -e "FDO_OPS_EXTERNAL_PORT=$FDO_OPS_EXTERNAL_PORT" -e "HZN_EXCHANGE_URL=$HZN_EXCHANGE_URL" -e "EXCHANGE_INTERNAL_URL=$EXCHANGE_INTERNAL_URL" -e "EXCHANGE_INTERNAL_CERT=$EXCHANGE_INTERNAL_CERT" -e "EXCHANGE_INTERNAL_RETRIES=$EXCHANGE_INTERNAL_RETRIES" -e "EXCHANGE_INTERNAL_INTERVAL=$EXCHANGE_INTERNAL_INTERVAL" -e "HZN_FSS_CSSURL=$HZN_FSS_CSSURL" -e "HZN_MGMT_HUB_CERT=$HZN_MGMT_HUB_CERT" -e "FDO_GET_PKGS_FROM=$FDO_GET_PKGS_FROM" -e "FDO_GET_CFG_FILE_FROM=$FDO_GET_CFG_FILE_FROM" -e "FDO_RV_VOUCHER_TTL=$FDO_RV_VOUCHER_TTL" -e "VERBOSE=$VERBOSE" $DOCKER_REGISTRY/$FDO_DOCKER_IMAGE:$VERSION
+docker run --name $FDO_DOCKER_IMAGE -d --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" -p $portNum:$portNum -p $FDO_OPS_PORT:$FDO_OPS_PORT -e "FDO_DB_PASSWORD:$FDO_DB_PASSWORD" -e "FDO_OPS_SVC_HOST=$FDO_OPS_SVC_HOST" -e "FDO_DB_USER:$FDO_DB_USER" -e "FDO_DB_URL=$FDO_DB_URL" -e "HZN_FDO_API_URL=$HZN_FDO_API_URL" -e "FDO_API_PWD=$FDO_API_PWD" -e "FDO_OCS_DB_PATH=$FDO_OCS_DB_CONTAINER_DIR" -e "FDO_OCS_SVC_PORT=$FDO_OCS_SVC_PORT" -e "FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_TLS_PORT" -e "FDO_SVC_CERT_PATH=$FDO_SVC_CERT_PATH" -e "FDO_OPS_PORT=$FDO_OPS_PORT" -e "FDO_OPS_EXTERNAL_PORT=$FDO_OPS_EXTERNAL_PORT" -e "HZN_EXCHANGE_URL=$HZN_EXCHANGE_URL" -e "EXCHANGE_INTERNAL_URL=$EXCHANGE_INTERNAL_URL" -e "EXCHANGE_INTERNAL_CERT=$EXCHANGE_INTERNAL_CERT" -e "EXCHANGE_INTERNAL_RETRIES=$EXCHANGE_INTERNAL_RETRIES" -e "EXCHANGE_INTERNAL_INTERVAL=$EXCHANGE_INTERNAL_INTERVAL" -e "HZN_FSS_CSSURL=$HZN_FSS_CSSURL" -e "HZN_MGMT_HUB_CERT=$HZN_MGMT_HUB_CERT" -e "FDO_GET_PKGS_FROM=$FDO_GET_PKGS_FROM" -e "FDO_GET_CFG_FILE_FROM=$FDO_GET_CFG_FILE_FROM" -e "FDO_RV_VOUCHER_TTL=$FDO_RV_VOUCHER_TTL" -e "VERBOSE=$VERBOSE" $DOCKER_REGISTRY/$FDO_DOCKER_IMAGE:$VERSION
