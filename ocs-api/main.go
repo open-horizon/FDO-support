@@ -225,7 +225,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		postFdoVoucherHandler(matches[1], w, r)
 	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
 		postFdoRedirectHandler(matches[1], w, r)
-	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
+	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/redirect
     	getFdoRedirectHandler(matches[1], w, r)
 	} else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
 		getFdoTo0Handler(matches[1], matches[2], w, r)
@@ -520,7 +520,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 	// Send response to client
 	respBody := map[string]interface{}{
-		"deviceGuid": deviceUuid,
+		"deviceUuid": deviceUuid,
 		"nodeToken":  nodeToken,
 	}
 
