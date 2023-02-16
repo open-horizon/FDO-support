@@ -53,6 +53,7 @@ The FDO owner services are packaged as a single docker container that can be run
    export FDO_DB_URL=jdbc:postgresql://<fdo-db-host>:5432/fdo
    export FDO_DB_USER=fdouser
    export FDO_DB_PASSWORD=fdouser
+   export FDO_OPS_SVC_HOST=<fdo-owner-svc-host>:8042
    ```
 
 4. Choose a password for the owner service API inside the owner services container and assign it to FDO_API_PWD. It must be prefixed by "apiUser". For example:
@@ -132,7 +133,7 @@ All of the following steps interacting with localhost:8039 are automated by the 
 1. **On your VM to be initialized**, run the first API to post instructions for manufacturer to redirect device to correct RV server, and run the second API to verify you posted the correct instructions:
 
 ```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,2],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
+curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,1],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
 
 ## Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
 #For Example
