@@ -57,12 +57,12 @@ RUN useradd -r -u 1000 -g root fdouser \
 #RUN curl -sS -o openjre-11_linux-x64_bin.tar.gz https://cdn.azul.com/zulu/bin/zulu11.33.15-ca-jre11.0.4-linux_x64.tar.gz && \
 #RUN curl -sS -o openjre-11_linux-x64_bin.tar.gz https://cdn.azul.com/zulu/bin/zulu11.43.55-ca-jre11.0.9.1-linux_x64.tar.gz && \
 #    mv zulu11.*-linux_x64 /usr/lib/jvm/openjre-11-manual-installation && \
-RUN curl -sSL -o openjre-11_linux-x64_bin.tar.gz https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.10%2B9/OpenJDK11U-jre_x64_linux_hotspot_11.0.10_9.tar.gz && \
+RUN curl -sSL -o openjre-11_linux-x64_bin.tar.gz https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jre_x64_linux_11.0.15_10.tar.gz && \
     sha256sum openjre-11_linux-x64_bin.tar.gz && \
     tar xzf openjre-11_linux-x64_bin.tar.gz && \
     rm openjre-11_linux-x64_bin.tar.gz && \
     mkdir -p /usr/lib/jvm && \
-    mv jdk-11.0.10+9-jre /usr/lib/jvm/openjre-11-manual-installation && \
+    mv openjdk-11.0.15_10-jre /usr/lib/jvm/openjre-11-manual-installation && \
     update-alternatives --install /usr/bin/java java /usr/lib/jvm/openjre-11-manual-installation/bin/java 1
 
 # this doesn't work here, because docker writes /etc/hosts when it starts the container
