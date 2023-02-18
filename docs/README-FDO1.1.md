@@ -1,13 +1,25 @@
-***NOTE***: This is a preliminary implementation of the [FIDO Device Onboard Spec](https://fidoalliance.org/specs/FDO/fido-device-onboard-v1.0-ps-20210323/) published by the FIDO Alliance. The implementation is experimental and incomplete, and is not ready for use in any production capacity. Some cryptographic algorithms and encoding formats have not been implemented, and any aspect of this implementation is subject to change.
+---
+copyright:
+years: 2022 - 2023
+lastupdated: "2023-02-19"
+title: "FDO Protocol Reference"
+description: "FDO Protocol Reference Implementation Quick Start"
+
+parent: Administering
+nav_order: 3
+has_children: true
+---
 
 # FIDO Device Onboard (FDO) Protocol Reference Implementation (PRI) Quick Start
 
-## System Requirements:
+***NOTE***: This is a preliminary implementation of the [FIDO Device Onboard Spec](https://fidoalliance.org/specs/FDO/fido-device-onboard-v1.0-ps-20210323/) published by the FIDO Alliance. The implementation is experimental and incomplete, and is not ready for use in any production capacity. Some cryptographic algorithms and encoding formats have not been implemented, and any aspect of this implementation is subject to change.
 
-* **Ubuntu 20.04**.
-* **Maven 3.6.3**.
-* **Java 11**.
-* **Haveged**.
+## System Requirements
+
+- **Ubuntu 20.04**
+- **Maven 3.6.3**
+- **Java 11**
+- **Haveged**
 
 ## Source Layout
 
@@ -35,9 +47,10 @@ Ensure that these ports are not used by other applications while building and ex
 binaries.
 
 Use the following commands to build FDO PRI source.
-```
-$ cd <fdo-pri-src>
-$ mvn clean install
+
+```bash
+cd <fdo-pri-src>
+mvn clean install
 ```
 
 The build creates artifacts which will be used in the rest of this guide.
@@ -47,27 +60,30 @@ The build creates artifacts which will be used in the rest of this guide.
 ### Starting FDO PRI HTTP Servers
 
 #### Starting the FDO PRI Rendezvous (RV) HTTP Server
-```
-$ cd <fdo-pri-src>/protocol-samples/http-server-to0-to1-sample/
-$ mvn exec:java
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-server-to0-to1-sample/
+mvn exec:java
 ```
 
 The server will listen for FDO PRI http messages on port 8040.
 The H2 database will listen on TCP port 8050.
 
 #### Starting the FDO PRI Owner HTTP Server
-```
-$ cd <fdo-pri-src>/protocol-samples/http-server-to2-sample/
-$ mvn exec:java
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-server-to2-sample/
+mvn exec:java
 ```
 
 The server will listen for FDO PRI HTTP messages on port 8042.
 The H2 database will listen on TCP port 8051.
 
 #### Starting the FDO PRI Device Initialization (DI) HTTP Server
-```
-$ cd <fdo-pri-src>/protocol-samples/http-server-di-sample/
-$ mvn exec:java
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-server-di-sample/
+mvn exec:java
 ```
 
 The server will listen for FDO PRI HTTP messages on port 8039.
@@ -77,10 +93,12 @@ You can allow remote database console connections by setting webAllowOthers=true
 ### Running FDO PRI HTTP Clients
 
 #### Running the FDO PRI Device Initialization (DI) HTTP Client
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-client-di-sample
+mvn exec:java
 ```
-$ cd <fdo-pri-src>/protocol-samples/http-client-di-sample
-$ mvn exec:java
-```
+
 Expect the following line on successful DI completion.
 
 SerialNo: d35a096f
@@ -92,10 +110,12 @@ DI Client finished.
 Refer [Ownership Voucher Creation](#ownership-voucher-creation) for next steps.
 
 #### Running the FDO PRI TO0 HTTP Client
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-client-to0-sample
+mvn exec:java
 ```
-$ cd <fdo-pri-src>/protocol-samples/http-client-to0-sample
-$ mvn exec:java
-```
+
 Expect the following message on successful TO0 completion.
 
 TO0 Response Wait: 3600
@@ -103,24 +123,27 @@ TO0 Response Wait: 3600
 TO0 Client finished.
 
 #### Running the FDO PRI TO1 HTTP Client
-```
-$ cd <fdo-pri-src>/protocol-samples/http-client-to1-sample
-$ mvn exec:java
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-client-to1-sample
+mvn exec:java
 ```
 
 signed RV Blob: 84a10126...
 TO1 Client finished.
 
 ### Running the FDO PRI TO2 HTTP Client
-```
-$ cd <fdo-pri-src>/protocol-samples/http-client-to2-sample
-$ mvn exec:java
+
+```bash
+cd <fdo-pri-src>/protocol-samples/http-client-to2-sample
+mvn exec:java
 ```
 
 TO2 Client finished.
 
 ***NOTE***: During the execution of the Protocol Samples using the command 'mvn exec:java', the following warning messages may be displayed on the console. These warning messages are a result of the version discrepancy of Guice with Maven and Java 11. This does not have any effect on the execution of the Protocol Sample.
-```
+
+```text
 WARNING: An illegal reflective access operation has occurred
 WARNING: Illegal reflective access by com.google.inject.internal.cglib.core.$ReflectUtils$1 (file:/usr/share/maven/lib/guice.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
 WARNING: Please consider reporting this to the maintainers of com.google.inject.internal.cglib.core.$ReflectUtils$1
@@ -143,38 +166,39 @@ http://localhost:8039/api/v1/vouchers/<serial_no>
 The hex value of the extended Ownership Voucher can be obtained by running the API above. The value will be populated on DI server console.
 
 To log in to the database and view records use the following information:
-```
+
+```text
 "User Name:" = "sa"
 "Password:" = "" (blank)
 "JDBC URL:" = "jdbc:h2:tcp://<localhost>:8049/<fdo-pri-src>/protocol-samples/http-server-di-sample/target/data/mfg"
 ```
+
 The path to the DB will be printed out in the following format when the DI server is starting.
 
 `jdbc:h2:tcp:...`
 
 SELECT * FROM MT_DEVICES will show the current Ownership Vouchers created by DI messages.
 
-# Enabling Remote Access to DB
+## Enabling Remote Access to DB
 
 Remote access to H2 Sample Storage DB has been disabled by default. Enabling the access creates a security hole in the system which makes it vulnerable to Remote Code Execution.
 
 To enable remote access to DB update the `db.tcpServer` and `webAllowOthers` properties in the following files:
 
+- To enable remote access for DI server DB, update file:  `<fdo-pri-src>/protocol-samples/http-server-di-sample/src/main/java/org/fidoalliance/fdo/sample/DiApp.java`
 
-- To enable remote access for DI server DB, update file:  `<fdo-pri-src>/protocol-samples/http-server-di-sample/src/main/java/org/fidoalliance/fdo/sample/DiApp.java` <br/>
-
-- To enable remote access for TO0-TO1 server DB, update file:  `<fdo-pri-src>/protocol-samples/http-server-to0-to1-sample/src/main/java/org/fidoalliance/fdo/sample/To0To1ServerApp.java` <br/>
+- To enable remote access for TO0-TO1 server DB, update file:  `<fdo-pri-src>/protocol-samples/http-server-to0-to1-sample/src/main/java/org/fidoalliance/fdo/sample/To0To1ServerApp.java`
 
 - To enable remote access for TO2 server DB, update file: `<fdo-pri-src>/protocol-samples/http-server-to2-sample/src/main/java/org/fidoalliance/fdo/sample/To2ServerApp.java`
 
-```
+```text
 db.tcpServer = -tcp -tcpAllowOthers -ifNotExists -tcpPort <service_db_port>
 webAllowOthers = true
 ```
 
 **IMPORTANT: Not recommended to enable this setting especially on production systems.**
 
-# Enabling Rendezvous Bypass
+## Enabling Rendezvous Bypass
 
 FDO includes a Rendezvous Bypass mechanism that is useful for IOT deployments that are not
 dependent on a particular network structure or ownership.
@@ -191,17 +215,17 @@ To enable Rendezvous Bypass
 - Setting the `rvbypass` flag in RVblob, causes the TO1 protocol to be skipped, and a TO2 connection
  to be attempted to `<owner-ip>` address mentioned in the above POST body.
 
-# EPID Test Mode
+## EPID Test Mode
 
 EPID devices can be tested using `Test` mode. EPID `Test` mode feature is intended to support onboarding for `development` and `test` devices. Enabling the test mode means signature verification won't be performed for the device. Test mode is enabled by default for protocol-sample in components.
 
 ***NOTE***: Not recommended for use in production systems.
 
-# Using Component Samples
+## Using Component Samples
 
 Refer to [Demo README](component-samples/demo/README.md) for steps to run component sample demo.
 
-# Support for OnDie Devices
+## Support for OnDie Devices
 
 Refer to [Demo README](component-samples/demo/README.md) for steps to configure component-samples to support OnDie devices.
 
