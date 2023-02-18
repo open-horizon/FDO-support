@@ -47,6 +47,7 @@ This page describes the FIDO Device Onboard (FDO) REST API interfaces.
 | DELETE /api/v1/owner/resource?filename=fileName | Delete the  file from DB based on filename from `SYSTEM_RESOURCE` table   | Query - filename | | |  |  curl -D - --digest -u ${api_user}: --location --request DELETE 'http://localhost:8042/api/v1/owner/resource?filename=fileName' --header 'Content-Type: text/plain'|
 | POST /api/v1/resell/{guid} | Gets extended resell Ownership Voucher with the guid. | Path - guid of the device to resell | | Owner Certificate | The Ownership voucher in PEM format |   curl -D - --digest -u ${api_user}: --location --request POST "http://localhost:8039/api/v1/resell/${guid}" --header 'Content-Type: text/plain' --data-raw  "$owner_certificate" -o ${serial_no}_voucher.txt |
 | GET /api/v1/owner/state/{guid} | Returns the TO status the associated GUID | GUID of the device |  |  | Returns TO2 completed status & TO0 expiry (timestamps) |  curl  -D - --digest -u ${api_user}:  --location --request GET 'http://localhost:8042/api/v1/owner/state/{guid}' |
+{: caption="Table 1. FDO Owner Services API" caption-side="top"}
 
 Following is the list of REST response error codes and it's possible causes :
 
@@ -57,6 +58,7 @@ Following is the list of REST response error codes and it's possible causes :
 | `405 Method Not Allowed` | When an unsupported REST method is requested. Currently, Owner supports GET, POST and DELETE only. |
 | `406 Not Acceptable` | When an invalid filename is passed through the REST endpoints. |
 | `500 Internal Server Error` | Due to internal error, Owner unable to fetch/copy/delete the requested file. |
+{: caption="Table 2. FDO Owner Services API response error codes" caption-side="top"}
 
 ## FDO PRI Rendezvous REST APIs
 
@@ -76,6 +78,7 @@ Following is the list of REST response error codes and it's possible causes :
 | POST /api/v1/rv/allow | Adds public key to allowed list of Owners in RV |  |  text/plain |  certificate in pem format | |   curl  -D - --digest -u ${api_user}:  --location --request POST 'http://localhost:8040/api/v1/rv/allow` --data-raw  "$owner_certificate" |
 | DELETE /api/v1/rv/allow | delete public key to allowed list of Owners in RV |  |  text/plain |  certificate in pem format | |   curl  -D - --digest -u ${api_user}:  --location --request POST 'http://localhost:8040/api/v1/rv/allow` --data-raw  "$owner_certificate" |
 | POST /api/v1/rv/deny | Adds public key to denied list of Owners in RV |  |  text/plain |  certificate in pem format | |   curl  -D - --digest -u ${api_user}:  --location --request POST 'http://localhost:8040/api/v1/rv/deny` --data-raw  "$owner_certificate" |
+{: caption="Table 3. FDO PRI Rendezvous API" caption-side="top"}
 
 Following is the list of REST response error codes and it's description :
 
@@ -86,6 +89,7 @@ Following is the list of REST response error codes and it's description :
 | `405 Method Not Allowed` | When an unsupported REST method is requested. Currently, RV supports GET, PUT and DELETE only. |
 | `406 Not Acceptable` | When an invalid filename is passed through the REST endpoints. |
 | `500 Internal Server Error` | Due to internal error, RV unable to fetch/copy/delete the requested file. |
+{: caption="Table 4. FDO PRI Rendezvous API response error codes" caption-side="top"}
 
 ## FDO PRI Manufacturer REST APIs
 
@@ -104,6 +108,7 @@ Following is the list of REST response error codes and it's description :
 | POST /api/v1/certificate/validity?days=no_of_days | Updates certificate validity in `CERTIFICATE_VALIDITY` table | Query - days | text/plain |  | | curl  -D - --digest -u ${api_user}: --location --request POST 'http://localhost:8039/api/v1/certificate/validity?days=10' --header 'Content-Type: text/plain' |
 | GET /api/v1/certificate/validity | Collects certificate validity days from  `CERTIFICATE_VALIDITY` table | |  | | Number of Days| curl  -D - --digest -u ${api_user}: --location --request GET 'http://localhost:8039/api/v1/certificate/validity' |
 | GET /health | Returns the health status |  |  | | Current version |  curl  -D - --digest -u ${api_user}:  --location --request GET 'http://localhost:8039/health' |
+{: caption="Table 5. FDO PRI Manufacturer API" caption-side="top"}
 
 Following is the list of REST response error codes and it's possible causes :
 
@@ -114,6 +119,7 @@ Following is the list of REST response error codes and it's possible causes :
 | `405 Method Not Allowed` | When an unsupported REST method is requested. Currently, MFG supports GET, POST and DELETE only. |
 | `406 Not Acceptable` | When an invalid filename is passed through the REST endpoints. |
 | `500 Internal Server Error` | Due to internal error, MFG unable to fetch/copy/delete the requested file. |
+{: caption="Table 6. FDO PRI Rendezvous API" caption-side="top"}
 
 ## FDO PRI Reseller REST APIs
 
@@ -123,6 +129,7 @@ Following is the list of REST response error codes and it's possible causes :
 | GET /api/v1/owner/vouchers | Returns a list of all Ownership Voucher GUIDs. | | | | line separated list of GUIDs | curl  -D - --digest -u ${api_user}: --location --request GET "http://localhost:8070/api/v1/owner/vouchers" --header 'Content-Type: text/plain' |
 | GET /api/v1/owner/vouchers/<device_guid> | Returns the Ownership Voucher for the specified GUID. | Query - id: Device GUID | | | Ownership Voucher | curl  -D - --digest -u ${api_user}: --location --request GET "http://localhost:8070/api/v1/owner/vouchers/${device_guid}" --header 'Content-Type: text/plain' |
 | POST /api/v1/owner/vouchers/ | Insert Ownership Voucher against the specified GUID in `ONBOARDING_VOUCHER` table. | | text/plain | Content of Ownership Voucher in PEM Format | |  curl  -D - --digest -u ${api_user}: --location --request POST "http://localhost:8070/api/v1/owner/vouchers" --header 'Content-Type: text/plain' --data-binary '${voucher}' |
+{: caption="Table 7. FDO PRI Reseller API" caption-side="top"}
 
 Following is the list of REST response error codes and it's possible causes :
 
@@ -133,3 +140,4 @@ Following is the list of REST response error codes and it's possible causes :
 | `405 Method Not Allowed` | When an unsupported REST method is requested. Currently, Reseller supports GET, POST and DELETE only. |
 | `406 Not Acceptable` | When an invalid filename is passed through the REST endpoints. |
 | `500 Internal Server Error` | Due to internal error, Reseller unable to fetch/copy/delete the requested file. |
+{: caption="Table 8. FDO PRI Reseller API response error codes" caption-side="top"}
