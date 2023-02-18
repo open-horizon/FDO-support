@@ -28,13 +28,9 @@ For the instructions in this document, `<fdo-pri-src>` refers to the path of the
 FDO PRI source code is organized into the following sub-folders.
 
 - `component-samples`: It contains all the normative and non-normative server and client implementation with all specifications listed in the base profile.
-
 - `http-api-samples`: It contains Servlet implementation for various operations to be performed using different REST endpoints for all server service.
-
 - `protocol-samples`: It contains client and server implementation that demonstrates the preliminary E2E demo that educates the end user with the protocol workflow.
-
 - `protocol`: It contains implementations related to protocol message processing.
-
 - `util`: It contains utility package such as storage, ServiceInfo, dispatchers - for message passing and cert-utils - for loading certificates and keys from PEM formatted strings.
 
 ## Building FDO PRI Source
@@ -52,6 +48,7 @@ Use the following commands to build FDO PRI source.
 cd <fdo-pri-src>
 mvn clean install
 ```
+{: codeblock}
 
 The build creates artifacts which will be used in the rest of this guide.
 
@@ -65,6 +62,7 @@ The build creates artifacts which will be used in the rest of this guide.
 cd <fdo-pri-src>/protocol-samples/http-server-to0-to1-sample/
 mvn exec:java
 ```
+{: codeblock}
 
 The server will listen for FDO PRI http messages on port 8040.
 The H2 database will listen on TCP port 8050.
@@ -75,6 +73,7 @@ The H2 database will listen on TCP port 8050.
 cd <fdo-pri-src>/protocol-samples/http-server-to2-sample/
 mvn exec:java
 ```
+{: codeblock}
 
 The server will listen for FDO PRI HTTP messages on port 8042.
 The H2 database will listen on TCP port 8051.
@@ -85,10 +84,11 @@ The H2 database will listen on TCP port 8051.
 cd <fdo-pri-src>/protocol-samples/http-server-di-sample/
 mvn exec:java
 ```
+{: codeblock}
 
 The server will listen for FDO PRI HTTP messages on port 8039.
 The H2 database will listen on TCP port 8049.
-You can allow remote database console connections by setting webAllowOthers=true in the .h2.server.properties file located your user home directory (for example, '~' for Linux and C:\Users\[username] for Windows).
+You can allow remote database console connections by setting webAllowOthers=true in the .h2.server.properties file located your user home directory (for example, '~' for Linux and C:\Users\\\[username] for Windows).
 
 ### Running FDO PRI HTTP Clients
 
@@ -98,6 +98,7 @@ You can allow remote database console connections by setting webAllowOthers=true
 cd <fdo-pri-src>/protocol-samples/http-client-di-sample
 mvn exec:java
 ```
+{: codeblock}
 
 Expect the following line on successful DI completion.
 
@@ -115,6 +116,7 @@ Refer [Ownership Voucher Creation](#ownership-voucher-creation) for next steps.
 cd <fdo-pri-src>/protocol-samples/http-client-to0-sample
 mvn exec:java
 ```
+{: codeblock}
 
 Expect the following message on successful TO0 completion.
 
@@ -128,6 +130,7 @@ TO0 Client finished.
 cd <fdo-pri-src>/protocol-samples/http-client-to1-sample
 mvn exec:java
 ```
+{: codeblock}
 
 signed RV Blob: 84a10126...
 TO1 Client finished.
@@ -138,6 +141,7 @@ TO1 Client finished.
 cd <fdo-pri-src>/protocol-samples/http-client-to2-sample
 mvn exec:java
 ```
+{: codeblock}
 
 TO2 Client finished.
 
@@ -150,6 +154,7 @@ WARNING: Please consider reporting this to the maintainers of com.google.inject.
 WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
 WARNING: All illegal access operations will be denied in a future release
 ```
+{: codeblock}
 
 ## Ownership Voucher Creation
 
@@ -172,6 +177,7 @@ To log in to the database and view records use the following information:
 "Password:" = "" (blank)
 "JDBC URL:" = "jdbc:h2:tcp://<localhost>:8049/<fdo-pri-src>/protocol-samples/http-server-di-sample/target/data/mfg"
 ```
+{: codeblock}
 
 The path to the DB will be printed out in the following format when the DI server is starting.
 
@@ -195,6 +201,7 @@ To enable remote access to DB update the `db.tcpServer` and `webAllowOthers` pro
 db.tcpServer = -tcp -tcpAllowOthers -ifNotExists -tcpPort <service_db_port>
 webAllowOthers = true
 ```
+{: codeblock}
 
 **IMPORTANT: Not recommended to enable this setting especially on production systems.**
 
@@ -211,7 +218,6 @@ To enable Rendezvous Bypass
 
 - Update the RVInfo blob with `rvbypass` flag and owner address using the API `POST /api/v1/rvinfo` with
   `http://<owner-ip:port>?rvbypass=&ipaddress=<owner-ip>&ownerport=<port>` as body.
-
 - Setting the `rvbypass` flag in RVblob, causes the TO1 protocol to be skipped, and a TO2 connection
  to be attempted to `<owner-ip>` address mentioned in the above POST body.
 
@@ -229,6 +235,4 @@ Refer to [Demo README](component-samples/demo/README.md) for steps to run compon
 
 Refer to [Demo README](component-samples/demo/README.md) for steps to configure component-samples to support OnDie devices.
 
-Support for OnDie devices is built into the protocol-samples and no configuration is required. The OnDie certs and CRLs are preloaded into the
-protocol-samples/onDieCache directory. Should these need to be refreshed (in case of devices released after the FDO PRI release) then the script in
-component-samples/onDieScript.py can be used to update the artifacts in this directory.
+Support for OnDie devices is built into the protocol-samples and no configuration is required. The OnDie certs and CRLs are preloaded into the protocol-samples/onDieCache directory. Should these need to be refreshed (in case of devices released after the FDO PRI release) then the script in component-samples/onDieScript.py can be used to update the artifacts in this directory.
