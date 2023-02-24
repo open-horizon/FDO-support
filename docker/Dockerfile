@@ -45,7 +45,7 @@ WORKDIR /root
 RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     rpm -i /root/epel-release-latest-8.noarch.rpm && \
     microdnf update -y && \
-    microdnf install --nodocs -y openssl ca-certificates tar findutils shadow-utils procps openssl-devel haveged vim && \
+    microdnf install --nodocs -y openssl ca-certificates tar findutils shadow-utils procps openssl-devel haveged && \
     microdnf clean all
 
 RUN useradd -r -u 1000 -g root fdouser \
