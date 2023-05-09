@@ -10,7 +10,7 @@ ocsDbDir="${1:-"ocs-db/"}"
 ocsApiPort="${2:-${SDO_OCS_API_TLS_PORT:-${SDO_OCS_API_PORT:-$ocsApiPortDefault}}}"  # precedence: arg, or tls port, or non-tls port, or default
 
 workingDir='/home/fdouser'
-deviceBinaryDir='pri-fidoiot-v1.1.4'
+deviceBinaryDir='pri-fidoiot-v1.1.5'
 # These can be passed in via CLI args or env vars
 tmp_pass=`head -c 10 /dev/random | base64`
 random_pass="apiUser:"$tmp_pass
@@ -23,7 +23,7 @@ FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-"fdouser"}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$(hostname):$ownerApiPort"}
 FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://$(hostname):5432/fdo"}
 #VERBOSE='true'   # let it be set by the container provisioner
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.4}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.5}
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage

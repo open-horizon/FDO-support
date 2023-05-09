@@ -19,7 +19,6 @@ has_children: true
 - **Ubuntu 20.04**
 - **Maven 3.6.3**
 - **Java 11**
-- **Haveged**
 
 ## Source Layout
 

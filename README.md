@@ -249,7 +249,7 @@ DROP DATABASE fdo;
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
-- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.4/owner/app-data/service.log or use command `docker logs -f fdo-owner-services` for error messages.
+- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.5/owner/app-data/service.log or use command `docker logs -f fdo-owner-services` for error messages.
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed and environment variables correctly exported.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB. Also make sure that you posted the correct To2 address.
 

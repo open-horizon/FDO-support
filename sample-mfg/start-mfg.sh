@@ -195,11 +195,11 @@ else
     fi
 
 
-if ! command haveged --help >/dev/null 2>&1; then
-    echo "Haveged is required, installing it"
-    sudo apt-get install -y haveged
-    chk $? 'installing haveged'
-fi
+#if ! command haveged --help >/dev/null 2>&1; then
+#    echo "Haveged is required, installing it"
+#    sudo apt-get install -y haveged
+#    chk $? 'installing haveged'
+#fi
 
 # If docker isn't installed, do that
 if ! command -v docker >/dev/null 2>&1; then
