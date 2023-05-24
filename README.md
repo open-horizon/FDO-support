@@ -1,4 +1,4 @@
-# Open Horizon FDO 1.0
+# Open Horizon FDO 1.1.0
 
 ## Overview of the Open Horizon FDO Support
 
@@ -35,7 +35,7 @@ The FDO owner services are packaged as a single docker container that can be run
    
     GRANT CONNECT ON DATABASE fdo TO fdouser;
     ```
-   
+
 2. Get `run-fdo-owner-services.sh`, which is used to start the container:
 
    ```bash
@@ -57,11 +57,11 @@ The FDO owner services are packaged as a single docker container that can be run
    ```
 
 4. Choose a password for the owner service API inside the owner services container and assign it to FDO_API_PWD. It must be prefixed by "apiUser". For example:
-   
+
    ```bash
    export FDO_API_PWD=apiUser:12345
    ```
-   
+
 6. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
 
    ```bash
@@ -71,7 +71,7 @@ The FDO owner services are packaged as a single docker container that can be run
 7. Start the FDO owner services docker container and view the log:
 
    ```bash
-   ./run-fdo-owner-service.sh 1.0.0
+   ./run-fdo-owner-service.sh 1.1.0
    docker logs -f fdo-owner-services
    ```
 
@@ -79,12 +79,22 @@ The FDO owner services are packaged as a single docker container that can be run
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
+Intel FIDO Deivce Onboard RV Servers:
+```bash
+ Development:
+   http://test.fdorv.com:80
+   
+ Production:
+   http://fdorv.com:80
+```
+
+
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
    ```bash
    export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
    export HZN_FDO_SVC_URL=<protocol>://<fdo-owner-svc-host>:9008
-   export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
+   export FDO_RV_URL=http://test.fdorv.com:80
    ```
 
 2. Query the Owner services and Ocs API  health and version:
@@ -249,7 +259,7 @@ DROP DATABASE fdo;
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
-- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.4/owner/app-data/service.log or use command `docker logs -f fdo-owner-services` for error messages.
+- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.5/owner/app-data/service.log or use command `docker logs -f fdo-owner-services` for error messages.
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed and environment variables correctly exported.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB. Also make sure that you posted the correct To2 address.
 

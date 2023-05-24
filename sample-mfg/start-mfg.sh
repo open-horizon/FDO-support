@@ -35,13 +35,18 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     usage 0
 fi
 
+export HZN_EXCHANGE_USER_AUTH=${HZN_EXCHANGE_USER_AUTH:-}
+export FDO_RV_URL=${FDO_RV_URL:-}
+export HZN_FDO_SVC_URL={HZN_FDO_SVC_URL:-http://127.0.0.1:9008}
+export HZN_ORG_ID=${HZN_ORG_ID:-}
+
 if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" || -z "$HZN_ORG_ID" ]]; then
     echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL, HZN_ORG_ID"
     exit 0
 fi
 
 
-deviceBinaryDir='pri-fidoiot-v1.1.1'   # the place we will unpack sdo_device_binaries_1.10_linux_x64.tar.gz to
+deviceBinaryDir='pri-fidoiot-v1.1.5'   # the place we will unpack sdo_device_binaries_1.10_linux_x64.tar.gz to
 rvHttpPort=${1:-80}
 rvHttpsPort=${2:-443} #Will change to 8041 when https is enabled
 rvUrl="$FDO_RV_URL"   # the external rv url that the device should reach it at
@@ -56,7 +61,7 @@ if [[ -f "$ownerPubKeyFile" ]]; then
 fi
 
 # These environment variables can be overridden
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/secure-device-onboard/release-fidoiot/releases/download/v1.1.1}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v1.1.1}
 useNativeClient=${FDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
 
 workingDir=fdo
@@ -182,7 +187,7 @@ echo "creating and switching to $workingDir"
 #fi
 # else they explicitly set it
 
-# Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
+# Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.29.2
 confirmcmds grep curl ping   # these should be in the minimal ubuntu
 
     # If java 11 isn't installed, do that
@@ -195,11 +200,11 @@ else
     fi
 
 
-if ! command haveged --help >/dev/null 2>&1; then
-    echo "Haveged is required, installing it"
-    sudo apt-get install -y haveged
-    chk $? 'installing haveged'
-fi
+#if ! command haveged --help >/dev/null 2>&1; then
+#    echo "Haveged is required, installing it"
+#    sudo apt-get install -y haveged
+#    chk $? 'installing haveged'
+#fi
 
 # If docker isn't installed, do that
 if ! command -v docker >/dev/null 2>&1; then
@@ -213,9 +218,9 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 
-# If docker-compose isn't installed, or isn't at least 1.21.0 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
-# For the dependency on 1.21.0 or greater, see: https://docs.docker.com/compose/release-notes/
-minVersion=1.21.0
+# If docker-compose isn't installed, or isn't at least 1.29.2 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
+# For the dependency on 1.29.2 or greater, see: https://docs.docker.com/compose/release-notes/
+minVersion=1.29.2
 if ! isDockerComposeAtLeast $minVersion; then
     if [[ -f '/usr/bin/docker-compose' ]]; then
         echo "Error: Need at least docker-compose $minVersion. A down-level version is currently installed, preventing us from installing the latest version. Uninstall docker-compose and rerun this script."
