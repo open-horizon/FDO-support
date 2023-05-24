@@ -35,6 +35,18 @@ EndOfMessage
     exit 1
 fi
 
+# Assumes Open Horizon All-in-1 envronment
+export DOCKER_DONTPULL=${DOCKER_DONTPULL:-true}
+export HZN_EXCHANGE_URL=${HZN_EXCHANGE_URL:-http://exchange-api:8080}
+export HZN_FSS_CSSURL=${HZN_FSS_CSSURL:-http://css-api:8080}
+export HZN_MGMT_HUB_CERT=${HZN_MGMT_HUB_CERT:-}
+export FDO_API_PWD=${FDO_API_PWD:-}
+export FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-fdouser}
+export FDO_DB_URL=${FDO_DB_URL:-jdbc:postgresql://postgres-fdo-owners-services:5432/fdo}
+export FDO_DB_USER=${FDO_DB_USER:-fdouser}
+export VERBOSE=${VERBOSE:-true}
+
+
 # These env vars are required
 if [[ -z "$HZN_EXCHANGE_URL" || -z "$HZN_FSS_CSSURL" || -z "$HZN_MGMT_HUB_CERT" ]]; then
     echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_URL, HZN_FSS_CSSURL, HZN_MGMT_HUB_CERT"
@@ -52,7 +64,8 @@ fi
 
 EXCHANGE_INTERNAL_CERT="${EXCHANGE_INTERNAL_CERT:-$HZN_MGMT_HUB_CERT}"
 VERSION="${1:-latest}"
-FDO_OPS_SVC_HOST=${FDO_OPS_SVC_HOST:-$(hostname)}
+#$(hostname)
+FDO_OPS_SVC_HOST=${FDO_OPS_SVC_HOST:-}
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-openhorizon}
 FDO_DOCKER_IMAGE=${FDO_DOCKER_IMAGE:-fdo-owner-services}
@@ -69,7 +82,8 @@ export FDO_OPS_PORT=${FDO_OPS_PORT:-8042}   # the port OPS should listen on *ins
 export FDO_OPS_EXTERNAL_PORT=${FDO_OPS_EXTERNAL_PORT:-$FDO_OPS_PORT}   # the external port the device should use to contact OPS
 export dbPort=${FDO_DB_PORT:-5432}
 # Define the OPS hostname the to0scheduler tells RV to direct the booting device to
-export FDO_OPS_HOST=${FDO_OPS_HOST:-$(hostname)}   # currently only used for OPS
+#$(hostname)
+export FDO_OPS_HOST=${FDO_OPS_HOST:-127.0.0.1}   # currently only used for OPS
 HZN_FDO_API_URL="http://"$FDO_OPS_HOST":"$FDO_OPS_PORT
 
 
@@ -103,11 +117,11 @@ if ! command -v docker >/dev/null 2>&1; then
     chk $? 'installing docker'
 fi
 
-if ! command psql --help >/dev/null 2>&1; then
-    echo "PostgreSQL is not installed, installing it"
-    sudo apt-get install -y postgresql
-    chk $? 'installing postgresql'
-fi
+#if ! command psql --help >/dev/null 2>&1; then
+#    echo "PostgreSQL is not installed, installing it"
+#    sudo apt-get install -y postgresql
+#    chk $? 'installing postgresql'
+#fi
 
 #MODIFY postgresql.conf and pg_hba.conf to allow Postgresdb to listen -
 #sed -i -e 's/# TYPE  DATABASE        USER            ADDRESS                 METHOD/# TYPE  DATABASE        USER            ADDRESS                 METHOD\nhost    all             all             0.0.0.0\/0               md5/' /etc/postgresql/*/main/pg_hba.conf
@@ -129,5 +143,39 @@ else
     chk $? 'Pulling from Docker Hub...'
 fi
 
+
 # Run the service container --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" $privateKeyMount $certKeyMount
-docker run --name $FDO_DOCKER_IMAGE -d --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" -p $portNum:$portNum -p $FDO_OPS_PORT:$FDO_OPS_PORT -e "FDO_DB_PASSWORD=$FDO_DB_PASSWORD" -e "FDO_OPS_SVC_HOST=$FDO_OPS_SVC_HOST" -e "FDO_DB_USER=$FDO_DB_USER" -e "FDO_DB_URL=$FDO_DB_URL" -e "HZN_FDO_API_URL=$HZN_FDO_API_URL" -e "FDO_API_PWD=$FDO_API_PWD" -e "FDO_OCS_DB_PATH=$FDO_OCS_DB_CONTAINER_DIR" -e "FDO_OCS_SVC_PORT=$FDO_OCS_SVC_PORT" -e "FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_TLS_PORT" -e "FDO_SVC_CERT_PATH=$FDO_SVC_CERT_PATH" -e "FDO_OPS_PORT=$FDO_OPS_PORT" -e "FDO_OPS_EXTERNAL_PORT=$FDO_OPS_EXTERNAL_PORT" -e "HZN_EXCHANGE_URL=$HZN_EXCHANGE_URL" -e "EXCHANGE_INTERNAL_URL=$EXCHANGE_INTERNAL_URL" -e "EXCHANGE_INTERNAL_CERT=$EXCHANGE_INTERNAL_CERT" -e "EXCHANGE_INTERNAL_RETRIES=$EXCHANGE_INTERNAL_RETRIES" -e "EXCHANGE_INTERNAL_INTERVAL=$EXCHANGE_INTERNAL_INTERVAL" -e "HZN_FSS_CSSURL=$HZN_FSS_CSSURL" -e "HZN_MGMT_HUB_CERT=$HZN_MGMT_HUB_CERT" -e "FDO_GET_PKGS_FROM=$FDO_GET_PKGS_FROM" -e "FDO_GET_CFG_FILE_FROM=$FDO_GET_CFG_FILE_FROM" -e "FDO_RV_VOUCHER_TTL=$FDO_RV_VOUCHER_TTL" -e "VERBOSE=$VERBOSE" $DOCKER_REGISTRY/$FDO_DOCKER_IMAGE:$VERSION
+docker run -d \
+           -e "FDO_DB_PASSWORD=$FDO_DB_PASSWORD" \
+           -e "FDO_OPS_SVC_HOST=$FDO_OPS_SVC_HOST" \
+           -e "FDO_DB_USER=$FDO_DB_USER" \
+           -e "FDO_DB_URL=$FDO_DB_URL" \
+           -e "HZN_FDO_API_URL=$HZN_FDO_API_URL" \
+           -e "FDO_API_PWD=$FDO_API_PWD" \
+           -e "FDO_OCS_DB_PATH=$FDO_OCS_DB_CONTAINER_DIR" \
+           -e "FDO_OCS_SVC_PORT=$FDO_OCS_SVC_PORT" \
+           -e "FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_TLS_PORT" \
+           -e "FDO_SVC_CERT_PATH=$FDO_SVC_CERT_PATH" \
+           -e "FDO_OPS_PORT=$FDO_OPS_PORT" \
+           -e "FDO_OPS_EXTERNAL_PORT=$FDO_OPS_EXTERNAL_PORT" \
+           -e "HZN_EXCHANGE_URL=$HZN_EXCHANGE_URL" \
+           -e "EXCHANGE_INTERNAL_URL=$EXCHANGE_INTERNAL_URL" \
+           -e "EXCHANGE_INTERNAL_CERT=$EXCHANGE_INTERNAL_CERT" \
+           -e "EXCHANGE_INTERNAL_RETRIES=$EXCHANGE_INTERNAL_RETRIES" \
+           -e "EXCHANGE_INTERNAL_INTERVAL=$EXCHANGE_INTERNAL_INTERVAL" \
+           -e "HZN_FSS_CSSURL=$HZN_FSS_CSSURL" \
+           -e "HZN_MGMT_HUB_CERT=$HZN_MGMT_HUB_CERT" \
+           -e "FDO_GET_PKGS_FROM=$FDO_GET_PKGS_FROM" \
+           -e "FDO_GET_CFG_FILE_FROM=$FDO_GET_CFG_FILE_FROM" \
+           -e "FDO_RV_VOUCHER_TTL=$FDO_RV_VOUCHER_TTL" \
+           -e "VERBOSE=$VERBOSE" \
+           --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" \
+           --name $FDO_DOCKER_IMAGE \
+           --network=hzn_horizonnet \
+           --health-interval=15s \
+           --health-retries=3 \
+           --health-timeout=5s \
+           --health-cmd="curl --fail http://localhost:8042/health || exit 1" \
+           -p 127.0.0.1:$FDO_OPS_PORT:8042 \
+           -p 127.0.0.1:$FDO_OCS_SVC_PORT:9008 \
+           $DOCKER_REGISTRY/$FDO_DOCKER_IMAGE:$VERSION

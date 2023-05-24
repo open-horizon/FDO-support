@@ -1,7 +1,7 @@
 ---
 copyright:
 years: 2022 - 2023
-lastupdated: "2023-02-19"
+lastupdated: "2023-05-25"
 title: "FDO Protocol Reference"
 description: "FDO Protocol Reference Implementation Quick Start"
 
@@ -19,7 +19,6 @@ has_children: true
 - **Ubuntu 20.04**
 - **Maven 3.6.3**
 - **Java 11**
-- **Haveged**
 
 ## Source Layout
 
@@ -219,7 +218,7 @@ To enable Rendezvous Bypass
 - Update the RVInfo blob with `rvbypass` flag and owner address using the API `POST /api/v1/rvinfo` with
   `http://<owner-ip:port>?rvbypass=&ipaddress=<owner-ip>&ownerport=<port>` as body.
 - Setting the `rvbypass` flag in RVblob, causes the TO1 protocol to be skipped, and a TO2 connection
- to be attempted to `<owner-ip>` address mentioned in the above POST body.
+  to be attempted to `<owner-ip>` address mentioned in the above POST body.
 
 ## EPID Test Mode
 

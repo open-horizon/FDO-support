@@ -1,9 +1,9 @@
 SHELL ?= /bin/bash -e
 # Set this before building the ocs-api binary and FDO-owner-services (for now they use the samme version number)
-export VERSION ?= 1.0.0
+export VERSION ?= 1.1.0
 # used by sample-mfg/Makefile. Needs to match what is in fdo/supply-chain-tools-v<version>/docker_manufacturer/docker-compose.yml
-FDO_VERSION ?= 1.1.4
-STABLE_VERSION ?= 1.0.0
+FDO_VERSION ?= 1.1.5
+STABLE_VERSION ?= 1.1.0
 
 #todo: add BUILD_NUMBER like in anax/Makefile
 
