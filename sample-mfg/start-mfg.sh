@@ -187,7 +187,7 @@ echo "creating and switching to $workingDir"
 #fi
 # else they explicitly set it
 
-# Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
+# Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.29.2
 confirmcmds grep curl ping   # these should be in the minimal ubuntu
 
     # If java 11 isn't installed, do that
@@ -218,8 +218,8 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 
-# If docker-compose isn't installed, or isn't at least 1.21.0 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
-# For the dependency on 1.21.0 or greater, see: https://docs.docker.com/compose/release-notes/
+# If docker-compose isn't installed, or isn't at least 1.29.2 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
+# For the dependency on 1.29.2 or greater, see: https://docs.docker.com/compose/release-notes/
 minVersion=1.29.2
 if ! isDockerComposeAtLeast $minVersion; then
     if [[ -f '/usr/bin/docker-compose' ]]; then
