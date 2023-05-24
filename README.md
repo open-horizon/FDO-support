@@ -1,4 +1,4 @@
-# Open Horizon FDO 1.1.0
+# Open Horizon FDO 1.2.0
 
 ## Overview of the Open Horizon FDO Support
 
@@ -71,7 +71,7 @@ The FDO owner services are packaged as a single docker container that can be run
 7. Start the FDO owner services docker container and view the log:
 
    ```bash
-   ./run-fdo-owner-service.sh 1.1.0
+   ./run-fdo-owner-service.sh 1.2.0
    docker logs -f fdo-owner-services
    ```
 
