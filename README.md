@@ -1,4 +1,4 @@
-# Open Horizon FDO 1.0
+# Open Horizon FDO 1.1.0
 
 ## Overview of the Open Horizon FDO Support
 
@@ -71,7 +71,7 @@ The FDO owner services are packaged as a single docker container that can be run
 7. Start the FDO owner services docker container and view the log:
 
    ```bash
-   ./run-fdo-owner-service.sh 1.0.0
+   ./run-fdo-owner-service.sh 1.1.0
    docker logs -f fdo-owner-services
    ```
 
@@ -79,12 +79,22 @@ The FDO owner services are packaged as a single docker container that can be run
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
+Intel FIDO Deivce Onboard RV Servers:
+```bash
+ Development:
+   http://test.fdorv.com:80
+   
+ Production:
+   http://fdorv.com:80
+```
+
+
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
    ```bash
    export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
    export HZN_FDO_SVC_URL=<protocol>://<fdo-owner-svc-host>:9008
-   export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
+   export FDO_RV_URL=http://test.fdorv.com:80
    ```
 
 2. Query the Owner services and Ocs API  health and version:
