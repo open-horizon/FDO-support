@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2023-06-07
+- Issue 29: Completed sample-mfg/start-mfg.sh bash script.
+
 ## [1.1.0] - 2023-05-24
 - Issue 25: Updated FDO to support Intel's `1.1.5` release.
 - Updated FDO fetch address to reference FDO's new development organization domain.
