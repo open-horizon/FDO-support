@@ -2,8 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2023-06-07
+## [1.2.0] - 2023-06-06
 - Issue 29: Completed sample-mfg/start-mfg.sh bash script.
+- Converted swagger documentation to OpenAPI 3
+- README updates
 
 ## [1.1.0] - 2023-05-24
 - Issue 25: Updated FDO to support Intel's `1.1.5` release.

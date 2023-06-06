@@ -22,44 +22,40 @@ The FDO owner services are packaged as a single docker container that can be run
 1. Start up an instance of postgresDB, and create an fdo user and fdo database with connection access:
 
     ``` bash
-    docker pull postgres
-    docker run --name some-postgres -e POSTGRES_PASSWORD=fdo -e POSTGRES_USER=fdo -e POSTGRES_DB=fdo -d postgres
-    sudo -i -u postgres psql
-   
-    CREATE ROLE fdouser 
-    SUPERUSER
-    LOGIN
-    PASSWORD 'fdouser';
-   
-    CREATE DATABASE fdo;
-   
-    GRANT CONNECT ON DATABASE fdo TO fdouser;
+    docker run -d \
+               -e "POSTGRES_DB=$FDO_OWN_SVC_DB" \
+               -e "POSTGRES_PASSWORD=$FDO_OWN_SVC_DB_PASSWORD" \
+               -e "POSTGRES_USER=$FDO_OWN_SVC_DB_USER" \
+               -e "POSTGRES_HOST_AUTH_METHOD=trust" \
+               --health-cmd="pg_isready -U $FDO_OWN_SVC_DB_USER" \
+               --health-interval=15s \
+               --health-retries=3 \
+               --health-timeout=5s \
+               --name postgres-fdo-mfg-service \
+               --network=hzn_horizonnet \
+               -p 5433:5432 \
+               postgres:13
     ```
 
-2. Get `run-fdo-owner-services.sh`, which is used to start the container:
+2. Download project to local host
+
+3. Run `./docker/run-fdo-owner-service.sh -h` to see the usage, and set all the necessary environment variables. For example:
 
    ```bash
-   mkdir $HOME/fdo; cd $HOME/fdo
-   curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/docker/run-fdo-owner-service.sh
-   chmod +x run-fdo-owner-service.sh
-   ```
-
-3. Run `./run-fdo-owner-service.sh -h` to see the usage, and set all the necessary environment variables. For example:
-
-   ```bash
-   export HZN_EXCHANGE_URL=https://<cluster-url>/edge-exchange/v1
-   export HZN_FSS_CSSURL=https://<cluster-url>/edge-css
-   export HZN_EXCHANGE_USER_AUTH=iamapikey:<api-key>
-   export FDO_DB_URL=jdbc:postgresql://<fdo-db-host>:5432/fdo
+   # An all-in-1 environment example:
+   export HZN_EXCHANGE_URL=http://exchange-api:8080/v1 # Exchange container
+   export HZN_FSS_CSSURL=http://css-api:8080           # CSS Container
+   export HZN_EXCHANGE_USER_AUTH=myorg/admin:password  # <organization>/<identity>:<password>
+   export FDO_DB_URL=jdbc:postgresql://postgres-fdo-owner-service:5432/fdo  # FDO Owners Service DB Container
    export FDO_DB_USER=fdouser
    export FDO_DB_PASSWORD=fdouser
-   export FDO_OPS_SVC_HOST=<fdo-owner-svc-host>:8042
+   export FDO_OPS_SVC_HOST=localhost:8042
    ```
 
 4. Choose a password for the owner service API inside the owner services container and assign it to FDO_API_PWD. It must be prefixed by "apiUser". For example:
 
    ```bash
-   export FDO_API_PWD=apiUser:12345
+   export FDO_API_PWD=apiUser:12345  # apiUser:<password>
    ```
 
 6. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
@@ -71,7 +67,7 @@ The FDO owner services are packaged as a single docker container that can be run
 7. Start the FDO owner services docker container and view the log:
 
    ```bash
-   ./run-fdo-owner-service.sh 1.2.0
+   ./docker/run-fdo-owner-service.sh 1.2.0
    docker logs -f fdo-owner-services
    ```
 
@@ -79,7 +75,7 @@ The FDO owner services are packaged as a single docker container that can be run
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
-Intel FIDO Deivce Onboard RV Servers:
+Intel FIDO Device Onboard Rendezvous Servers:
 ```bash
  Development:
    http://test.fdorv.com:80
@@ -92,23 +88,23 @@ Intel FIDO Deivce Onboard RV Servers:
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
    ```bash
-   export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
-   export HZN_FDO_SVC_URL=<protocol>://<fdo-owner-svc-host>:9008
+   export HZN_EXCHANGE_USER_AUTH=myorg/admin:password  # <organization>/<identity>:<password>
+   export HZN_FDO_SVC_URL=http://localhost:9008
    export FDO_RV_URL=http://test.fdorv.com:80
    ```
 
-2. Query the Owner services and Ocs API  health and version:
+2. Query the Owner Services and Owners Companion Service (OCS) API  health and version:
 
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/fdo/version | jq
-curl -k -sS $HZN_FDO_SVC_URL/version && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/fdo/version | jq
+curl -k -sS $HZN_FDO_SVC_URL/api/version && echo
 ```
 
 3. Query the ownership vouchers that have already been imported (initially it will be an empty list):
 
 ```bash
 # either use curl directly
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/vouchers | jq
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers | jq
 # or use the hzn command, if you have the horizon-cli package installed
 hzn fdo voucher list
 ```
@@ -116,8 +112,7 @@ hzn fdo voucher list
 4. "Ping" the rendezvous server:
 
 ```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET $FDO_RV_URL/health
-
+curl -D --location --request GET $FDO_RV_URL/health
 ```
 
 
@@ -132,13 +127,16 @@ The sample script called `start-mfg.sh` downloads and extracts all necessary com
  ```bash
 curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-mfg/start-mfg.sh
 chmod +x start-mfg.sh
-export HZN_EXCHANGE_USER_AUTH=iamapikey:<password>
-export FDO_RV_URL=http://sdo.lfedge.iol.unh.edu:80
-export HZN_FDO_SVC_URL=http://<fdo-owner-svc-host>:9008
+# <organization>/<identity>:<password>
+export HZN_ORG_ID=myorg
+export EXCHANGE_USER=admin
+export EXCHANGE_USER_PASSWORD=password
+export FDO_RV_URL=http://test.fdorv.com:80
+export HZN_FDO_SVC_URL=http://localhost:9008
 sudo -E ./start-mfg.sh
 ```
 
-All of the following steps interacting with localhost:8039 are automated by the `./start-mfh.sh` script.
+All the following steps interacting with localhost:8039 are automated by the `./start-mfh.sh` script.
 
 1. **On your VM to be initialized**, run the first API to post instructions for manufacturer to redirect device to correct RV server, and run the second API to verify you posted the correct instructions:
 
@@ -173,7 +171,7 @@ curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://l
 4. Given your device alias is the default "SECP256R1", run the following command to retrieve your public key:
 
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 -o public_key.pem && echo 
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 -o public_key.pem && echo 
 ```
 
 5. Now that you have the public key and serial number, you can use the following API call to retrieve your ownership voucher.
@@ -194,7 +192,7 @@ The ownership voucher created for the device in the previous step needs to be im
 2. Import the ownership voucher.
 
    ```bash
-   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @owner_voucher.txt $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/vouchers && echo
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @owner_voucher.txt $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers && echo
 
    hzn fdo voucher import owner_voucher.txt
    ```
@@ -209,31 +207,31 @@ All of the following steps have been automated by the ocs-api to install the hor
 1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Services.
 
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
 
 #For example
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da && echo
 
 ```
 
 2. Post the script that you want in the service info package. This is the script that will configure your device on boot up.
 
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
 #For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
 #To verify
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
 
 ```
 
 
 3. Now you can configure the service info package with the script that has been posted to the Owner Services DB.
 ```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/svi && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
 
 #For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' $HZN_FDO_SVC_URL/orgs/$HZN_ORG_ID/fdo/svi && echo
+curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
 ```
 
 ### <a name="boot-device"></a>Boot the Device to Have it Configured
