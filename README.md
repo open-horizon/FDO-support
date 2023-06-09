@@ -2,7 +2,7 @@
 
 ## Overview of the Open Horizon FDO Support
 
-Edge devices built with [Intel FDO](https://software.intel.com/en-us/secure-device-onboard) (FIDO Device Onboard) can be added to an Open Horizon instance by simply importing their associated ownership vouchers and then powering on the devices.
+Edge devices built with [FDO](https://github.com/fido-device-onboard) (FIDO Device Onboard) can be added to an Open Horizon instance by simply importing their associated ownership vouchers and then powering on the devices.
 
 The software in this git repository provides integration between FDO and Open Horizon, making it easy to use FDO-enabled edge devices with Horizon. The Horizon FDO support consists of these components:
 
@@ -58,13 +58,13 @@ The FDO owner services are packaged as a single docker container that can be run
    export FDO_API_PWD=apiUser:12345  # apiUser:<password>
    ```
 
-6. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
+5. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
 
    ```bash
    export HZN_MGMT_HUB_CERT=$(cat agent-install.crt | base64)
    ```
 
-7. Start the FDO owner services docker container and view the log:
+6. Start the FDO owner services docker container and view the log:
 
    ```bash
    ./docker/run-fdo-owner-service.sh 1.2.0
@@ -76,6 +76,7 @@ The FDO owner services are packaged as a single docker container that can be run
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
 Intel FIDO Device Onboard Rendezvous Servers:
+
 ```bash
  Development:
    http://test.fdorv.com:80
@@ -83,7 +84,6 @@ Intel FIDO Device Onboard Rendezvous Servers:
  Production:
    http://fdorv.com:80
 ```
-
 
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
@@ -95,26 +95,25 @@ Intel FIDO Device Onboard Rendezvous Servers:
 
 2. Query the Owner Services and Owners Companion Service (OCS) API  health and version:
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/fdo/version | jq
-curl -k -sS $HZN_FDO_SVC_URL/api/version && echo
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/fdo/version | jq
+   curl -k -sS $HZN_FDO_SVC_URL/api/version && echo
+   ```
 
 3. Query the ownership vouchers that have already been imported (initially it will be an empty list):
 
-```bash
-# either use curl directly
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers | jq
-# or use the hzn command, if you have the horizon-cli package installed
-hzn fdo voucher list
-```
+   ```bash
+   # either use curl directly
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers | jq
+   # or use the hzn command, if you have the horizon-cli package installed
+   hzn fdo voucher list
+   ```
 
 4. "Ping" the rendezvous server:
 
-```bash
-curl -D --location --request GET $FDO_RV_URL/health
-```
-
+   ```bash
+   curl -D --location --request GET $FDO_RV_URL/health
+   ```
 
 ### <a name="init-device"></a>Simulate Manufacturing Steps to Generate Ownership Voucher
 
@@ -140,47 +139,47 @@ All the following steps interacting with localhost:8039 are automated by the `./
 
 1. **On your VM to be initialized**, run the first API to post instructions for manufacturer to redirect device to correct RV server, and run the second API to verify you posted the correct instructions:
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,1],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
+   ```bash
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,1],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
 
-## Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
-#For Example
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"9.30.217.77"],[3,8040],[12,1],[2,"9.30.217.77"],[4,8040]]]' #'[[[5,"9.30.217.77"],[3,8040],[12,2],[2,"9.30.217.77"],[4,8041]]]' For TLS
+   # Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
+   # For Example
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"9.30.217.77"],[3,8040],[12,1],[2,"9.30.217.77"],[4,8040]]]' #'[[[5,"9.30.217.77"],[3,8040],[12,2],[2,"9.30.217.77"],[4,8041]]]' For TLS
 
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain'
-
-```
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain'
+   ```
 
 2. On your VM to be initialized, go to the device directory and run the following command to initialize your VM "Device":
 
-```bash
-cd fdo/pri-fidoiot-v1.1.1/device
-java -jar device.jar
-```
-The response should end with  
-[INFO ] DI complete, GUID is <Device GUID here>
-[INFO ] Starting Fdo Completed
+   ```bash
+   cd fdo/pri-fidoiot-v1.1.1/device
+   java -jar device.jar
+   ```
+
+   The response should end with [INFO ] DI complete, GUID is <Device GUID here>
+   [INFO ] Starting Fdo Completed
 
 3. Now that your device is initialized, run the following API call to verify your device is initialized and also to get the device "alias", "uuid" and "serial" information for the following steps
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/deviceinfo/10000' --header 'Content-Type: text/plain'
-```
-
+   ```bash
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/deviceinfo/10000' --header 'Content-Type: text/plain'
+   ```
 
 4. Given your device alias is the default "SECP256R1", run the following command to retrieve your public key:
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 -o public_key.pem && echo 
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 -o public_key.pem && echo 
+   ```
 
 5. Now that you have the public key and serial number, you can use the following API call to retrieve your ownership voucher.
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/<device-serial-here>" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
-#For example
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/BC9A649C" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
-```
+   ```bash
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/<device-serial-here>" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
+
+   # For example
+   curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/BC9A649C" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
+   ```
+
 This creates an ownership voucher in the file `owner_voucher.txt`.
 
 ### <a name="import-voucher"></a>Import the Ownership Voucher
@@ -203,36 +202,33 @@ The ownership voucher created for the device in the previous step needs to be im
 
 All of the following steps have been automated by the ocs-api to install the horizon agent on the target device. In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
 
-
 1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Services.
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
 
-#For example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da && echo
-
-```
+   # For example
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da && echo
+   ```
 
 2. Post the script that you want in the service info package. This is the script that will configure your device on boot up.
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
-#For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
-#To verify
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
-
-```
-
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
+   # For Example
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
+   # To verify
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
+   ```
 
 3. Now you can configure the service info package with the script that has been posted to the Owner Services DB.
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
 
-#For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
+
+   # For Example
+   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
+   ```
 
 ### <a name="boot-device"></a>Boot the Device to Have it Configured
 
@@ -240,20 +236,19 @@ When an FDO-enabled device (like your VM) boots, it starts the FDO process. The 
 
 1. **Back on your VM device** go to the device directory and run the following API command to "boot" your device:
 
-```bash
-cd fdo/pri-fidoiot-v1.1.1/device
-java -jar device.jar
-```
+   ```bash
+   cd fdo/pri-fidoiot-v1.1.1/device
+   java -jar device.jar
+   ```
 
 Now that FDO has configured your edge device, it is automatically disabled on this device so that when the device is rebooted FDO will not run. (The sole purpose of FDO is configuration of a brand new device.)
 
 If you run into any database errors or you just want to run through this process again with a fresh database
 
-```bash
-sudo -i -u postgres psql
-DROP DATABASE fdo;
-```
-
+   ```bash
+   sudo -i -u postgres psql
+   DROP DATABASE fdo;
+   ```
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
@@ -261,15 +256,14 @@ DROP DATABASE fdo;
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed and environment variables correctly exported.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB. Also make sure that you posted the correct To2 address.
 
-
 These steps only need to be performed by developers of this project
 
 ### <a name="create-new-release"></a>Creating a Release in the FDO-support Repo
 
 - Create a [release](https://github.com/open-horizon/FDO-support/releases) with the major and minor version (but not a patch number), e.g. `v1.11`
 - Upload these assets to the release:
-    - sample-mfg/start-mfg.sh
-    - docker/run-fdo-owner-service.sh
+  - sample-mfg/start-mfg.sh
+  - docker/run-fdo-owner-service.sh
 - Copy the previous version of the `README-*.md` to a new version and make the appropriate changes
 
 ### <a name="new-fdo-version"></a>Checklist For Moving Up to a New FDO Version
@@ -282,15 +276,15 @@ What to modify in our FDO support code when Intel releases a new version of FDO:
 - Update `getFDO.sh` to download/unpack new version
 - If new major or minor version, make copy of README. If a fix pack, just update the version numbers within the README.
 - Search for previous version number in rest of repo. Should find hits to change in:
-    - `docker/start-fdo-owner-service.sh`
-    - `docker/Dockerfile`
-    - `docs/README.md`
-    - `start-mfg.sh`
+  - `docker/start-fdo-owner-service.sh`
+  - `docker/Dockerfile`
+  - `docs/README.md`
+  - `start-mfg.sh`
 
 - If new major or minor version:
-    - update `.gitignore`
-    - create a new release in https://github.com/open-horizon/FDO-support/releases/ , and upload all device-related files/scripts.
+  - update `.gitignore`
+  - create a new release in <https://github.com/open-horizon/FDO-support/releases/> , and upload all device-related files/scripts.
 - If a fix pack:
-    - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/FDO-support/releases/
-    - Update the title and description to indicate the new fix pack version
+  - Update the device binary tar file and `start-mfg.sh` in the current release in <https://github.com/open-horizon/FDO-support/releases/>
+  - Update the title and description to indicate the new fix pack version
 - When testing, copy new versions of scripts to the test machines
