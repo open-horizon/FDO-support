@@ -13,65 +13,45 @@ The software in this git repository provides integration between FDO and Open Ho
 
 ## <a name="use-fdo"></a>Using the FDO Support
 
-### <a name="start-services-developer"></a>Starting Your Own Instance of the FDO Owner Services
+### <a name="start-services-developer"></a>Starting Your Own Instance of the FDO Owner Service
 
-The FDO owner services respond to booting devices and enable administrators to import ownership vouchers, keys and files.
+The FDO owner service respond to booting devices and enable administrators to import ownership vouchers, keys and files.
 
-The FDO owner services are packaged as a single docker container that can be run on any server that has network access, and that the FDO devices can reach over the network.
+The FDO owner service are packaged as a single docker container that can be run on any server that has network access, and that the FDO devices can reach over the network.
 
-1. Start up an instance of postgresDB, and create an fdo user and fdo database with connection access:
 
-    ``` bash
-    docker run -d \
-               -e "POSTGRES_DB=$FDO_OWN_SVC_DB" \
-               -e "POSTGRES_PASSWORD=$FDO_OWN_SVC_DB_PASSWORD" \
-               -e "POSTGRES_USER=$FDO_OWN_SVC_DB_USER" \
-               -e "POSTGRES_HOST_AUTH_METHOD=trust" \
-               --health-cmd="pg_isready -U $FDO_OWN_SVC_DB_USER" \
-               --health-interval=15s \
-               --health-retries=3 \
-               --health-timeout=5s \
-               --name postgres-fdo-mfg-service \
-               --network=hzn_horizonnet \
-               -p 5433:5432 \
-               postgres:13
-    ```
+1. Download project to local host
 
-2. Download project to local host
-
-3. Run `./docker/run-fdo-owner-service.sh -h` to see the usage, and set all the necessary environment variables. For example:
+2. Run `./docker/run-fdo-owner-service.sh -h` to see the usage, and set all the necessary environment variables. For example:
 
    ```bash
    # An all-in-1 environment example:
-   export HZN_EXCHANGE_URL=http://exchange-api:8080/v1 # Exchange container
-   export HZN_FSS_CSSURL=http://css-api:8080           # CSS Container
-   export HZN_EXCHANGE_USER_AUTH=myorg/admin:password  # <organization>/<identity>:<password>
-   export FDO_DB_URL=jdbc:postgresql://postgres-fdo-owner-service:5432/fdo  # FDO Owners Service DB Container
-   export FDO_DB_USER=fdouser
-   export FDO_DB_PASSWORD=fdouser
-   export FDO_OPS_SVC_HOST=localhost:8042
+   export HZN_EXCHANGE_USER_AUTH=admin:password  # <identity>:<password>
+   export HZN_ORG_ID=myorg  # <organization>
+   export FIDO_DEVICE_ONBOARD_REl_VER=1.1.5 # https://github.com/fido-device-onboard/release-fidoiot/releases
+   export VERBOSE=true # optional, for debug
    ```
 
-4. Choose a password for the owner service API inside the owner services container and assign it to FDO_API_PWD. It must be prefixed by "apiUser". For example:
+3. Optionally choose a password for the owner service API inside the owner service container and assign it to FDO_OWN_SVC_AUTH for access. A password will be generated if not set. It must be prefixed by "apiUser". For example:
 
    ```bash
-   export FDO_API_PWD=apiUser:12345  # apiUser:<password>
+   export FDO_OWN_SVC_AUTH=apiUser:12345  # apiUser:<password>
    ```
 
-6. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
+4. As part of installing the Horizon management hub, you should have run [edgeNodeFiles.sh](https://github.com/open-horizon/anax/blob/master/agent-install/edgeNodeFiles.sh), which created a tar file containing `agent-install.crt`. Use that to export this environment variable:
 
    ```bash
    export HZN_MGMT_HUB_CERT=$(cat agent-install.crt | base64)
    ```
 
-7. Start the FDO owner services docker container and view the log:
+5. Start the FDO owner service docker container and view the log:
 
    ```bash
    ./docker/run-fdo-owner-service.sh 1.2.0
-   docker logs -f fdo-owner-services
+   docker logs -f fdo-owner-service
    ```
 
-#### <a name="verify-services"></a>Verify the FDO Owner Services API Endpoints
+#### <a name="verify-services"></a>Verify the FDO Owner Service API Endpoints
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
@@ -79,60 +59,70 @@ Intel FIDO Device Onboard Rendezvous Servers:
 ```bash
  Development:
    http://test.fdorv.com:80
+   https://test.fdorv.com:443
    
  Production:
    http://fdorv.com:80
+   https://fdorv.com:443
 ```
 
 
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
    ```bash
-   export HZN_EXCHANGE_USER_AUTH=myorg/admin:password  # <organization>/<identity>:<password>
-   export HZN_FDO_SVC_URL=http://localhost:9008
+   export FDO_OWN_SVC_PORT=8042
+   export FDO_OWN_COMP_SVC_PORT=9008
    export FDO_RV_URL=http://test.fdorv.com:80
+   export HZN_ORG_ID=myorg # <organization>
+   export HZN_EXCHANGE_USER_AUTH=admin:password  # <identity>:<password>
+   export HZN_TRANSPORT=http # http
+   export HZN_LISTEN_IP=127.0.0.1 # localhost, domain, or ip address of Management Hub
    ```
 
-2. Query the Owner Services and Owners Companion Service (OCS) API  health and version:
+2. Query the FDO Owner Service and FDO Owner Companion Service (OCS) API health and version:
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/fdo/version | jq
-curl -k -sS $HZN_FDO_SVC_URL/api/version && echo
-```
+   ```bash
+   # FDO Owner Service
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/fdo/version" | jq
+   # FDO Owner Companion Service
+   curl -k -sS "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/version" && echo
+   ```
 
 3. Query the ownership vouchers that have already been imported (initially it will be an empty list):
 
-```bash
-# either use curl directly
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers | jq
-# or use the hzn command, if you have the horizon-cli package installed
-hzn fdo voucher list
-```
+   ```bash
+   # either use curl directly
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/vouchers" | jq
+   # or use the hzn command, if you have the horizon-cli package installed
+   hzn fdo voucher list
+   ```
 
 4. "Ping" the rendezvous server:
 
-```bash
-curl -D --location --request GET $FDO_RV_URL/health
-```
+   ```bash
+   curl -D --location --request GET $FDO_RV_URL/health
+   ```
 
 
 ### <a name="init-device"></a>Simulate Manufacturing Steps to Generate Ownership Voucher
 
-For production use of FDO, you need to import an Ownership Voucher into the owner services container. This ownership voucher enables you to securely take over ownership of FDO ownership vouchers from FDO-enabled device manufacturers, and to securely configure your booting FDO devices. Follow the instructions to build the manufacturing service and use the provided script to simulate the process of retrieving an Ownership Voucher from the manufacturer.
+For production use of FDO, you need to import an Ownership Voucher into the owner service container. This ownership voucher enables you to securely take over ownership of FDO ownership vouchers from FDO-enabled device manufacturers, and to securely configure your booting FDO devices. Follow the instructions to build the manufacturing service and use the provided script to simulate the process of retrieving an Ownership Voucher from the manufacturer.
 
 ####################
 
-The sample script called `start-mfg.sh` downloads and extracts all necessary components for the Manufacturing services. After building the manufacturing services, it then simulates the steps of an FDO-enabled device manufacturer: Initialize your "device" with FDO, retrieve a public key (from the Owner service) based of the device metadata, and retrieve an ownership voucher (from the manufacturer). Perform these steps on the VM device to be initialized (these steps are written for Ubuntu 22.04):
+The sample script called `start-mfg.sh` downloads and extracts all necessary components for the Manufacturing service. After building the manufacturing service, it then simulates the steps of an FDO-enabled device manufacturer: Initialize your "device" with FDO, retrieve a public key (from the Owner service) based of the device metadata, and retrieve an ownership voucher (from the manufacturer). Perform these steps on the VM device to be initialized (these steps are written for Ubuntu 22.04):
 
  ```bash
 curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-mfg/start-mfg.sh
 chmod +x start-mfg.sh
-# <organization>/<identity>:<password>
-export HZN_ORG_ID=myorg
-export EXCHANGE_USER=admin
-export EXCHANGE_USER_PASSWORD=password
-export FDO_RV_URL=http://test.fdorv.com:80
-export HZN_FDO_SVC_URL=http://localhost:9008
+export FIDO_DEVICE_ONBOARD_REL_VER=1.1.5 # https://github.com/fido-device-onboard/release-fidoiot/releases
+export FDO_MFG_SVC_AUTH=apiUser:password # apiUser:<password>
+export FDO_MFG_PORT=8039
+export FDO_OWN_COMP_SVC_PORT=9008
+export HZN_EXCHANGE_USER_AUTH=admin:password # <identity>:<password>
+export HZN_ORG_ID=myorg # <organization>
+export HZN_TRANSPORT=http # http
+export HZN_LISTEN_IP=127.0.0.1 # localhost, domain, or ip address of Management Hub
 sudo -E ./start-mfg.sh
 ```
 
@@ -140,47 +130,47 @@ All the following steps interacting with localhost:8039 are automated by the `./
 
 1. **On your VM to be initialized**, run the first API to post instructions for manufacturer to redirect device to correct RV server, and run the second API to verify you posted the correct instructions:
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,1],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
-
-## Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
-#For Example
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"9.30.217.77"],[3,8040],[12,1],[2,"9.30.217.77"],[4,8040]]]' #'[[[5,"9.30.217.77"],[3,8040],[12,2],[2,"9.30.217.77"],[4,8041]]]' For TLS
-
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain'
-
-```
+   ```bash
+    curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain' --data-raw '[[[5,"<FDO_RV_URL DNS>"],[3,<FDO_RV_URL PORT>],[12,1],[2,"<FDO_RV_URL DNS>"],[4,<FDO_RV_URL PORT>]]]'
+    
+    ## Configures for TLS -> '[[[5,"localhost"],[3,8040],[12,1],[2,"127.0.0.1"],[4,8041]]]'
+    #For Example
+    curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain' --data-raw '[[[5,"test.fdorv.com"],[3,80],[12,1],[2,"test.fdorv.com"],[4,80]]]' #'[[[5,"test.fdorv.com"],[3,443],[12,2],[2,"test.fdorv.com"],[4,443]]]' For TLS
+    
+    curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request GET "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain'
+    ```
 
 2. On your VM to be initialized, go to the device directory and run the following command to initialize your VM "Device":
 
-```bash
-cd fdo/pri-fidoiot-v1.1.1/device
-java -jar device.jar
-```
-The response should end with  
-[INFO ] DI complete, GUID is <Device GUID here>
-[INFO ] Starting Fdo Completed
+   ```bash
+   cd "fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REl_VER/device"
+   java -jar device.jar
+   ```
+   The response should end with
+   ```
+   17:57:47.916 [INFO ] DI complete, GUID is 7b7e0664-5b59-44f4-bd03-b26cd84565f5
+   17:57:47.916 [INFO ] Starting Fdo Completed
+   ```
 
 3. Now that your device is initialized, run the following API call to verify your device is initialized and also to get the device "alias", "uuid" and "serial" information for the following steps
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request GET 'http://localhost:8039/api/v1/deviceinfo/10000' --header 'Content-Type: text/plain'
-```
-
+   ```bash
+   curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request GET "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/deviceinfo/10000" --header 'Content-Type: text/plain'
+   ```
 
 4. Given your device alias is the default "SECP256R1", run the following command to retrieve your public key:
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1 -o public_key.pem && echo 
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/certificate/SECP256R1" -o public_key.pem && echo 
+   ```
 
 5. Now that you have the public key and serial number, you can use the following API call to retrieve your ownership voucher.
 
-```bash
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/<device-serial-here>" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
-#For example
-curl -D - --digest -u $HZN_EXCHANGE_USER_AUTH --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/BC9A649C" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
-```
+   ```bash
+   curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST  "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/mfg/vouchers/<device-serial-here>" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
+   #For example
+   curl -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST  "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/mfg/vouchers/BC9A649C" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt
+   ```
 This creates an ownership voucher in the file `owner_voucher.txt`.
 
 ### <a name="import-voucher"></a>Import the Ownership Voucher
@@ -192,7 +182,7 @@ The ownership voucher created for the device in the previous step needs to be im
 2. Import the ownership voucher.
 
    ```bash
-   curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @owner_voucher.txt $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/vouchers && echo
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @owner_voucher.txt "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/vouchers" && echo
 
    hzn fdo voucher import owner_voucher.txt
    ```
@@ -201,49 +191,144 @@ The ownership voucher created for the device in the previous step needs to be im
 
 ### <a name="service-info"></a>Configuring Service Info Package
 
-All of the following steps have been automated by the ocs-api to install the horizon agent on the target device. In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
+All the following steps have been automated by the ocs-api to install the horizon agent on the target device. In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
 
 
-1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Services.
+1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Service.
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid> && echo
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/to0/<deviceUUid>" && echo
+   #For example
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da" && echo
+   ```
 
-#For example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/to0/937e4731-0a6e-455e-bd99-b08bcdbb51da && echo
+2. (Optional) Post the script that you want in the service info package. This is the script that will configure your device on boot up. This does not need to be done by default, only if an additional script is needed on the device.
 
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here>" && echo
+   #For Example
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/resource/test.sh" && echo
+   #To verify
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh" && echo
+   ```
 
-2. Post the script that you want in the service info package. This is the script that will configure your device on boot up.
+3. (Optional) Now you can configure the service info package with the script that has been posted to the Owner Service DB. This does not need to be done by default, only if the boot time instructions for the device need alterations.
 
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @<script-name-here> $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/<script-name-here> && echo
-#For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-binary @test.sh $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/test.sh && echo
-#To verify
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -H Content-Type:text/plain $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/resource/agent-install-script-<deviceGuid>.sh && echo
-
-```
-
-
-3. Now you can configure the service info package with the script that has been posted to the Owner Services DB.
-```bash
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
-
-#For Example
-curl -k -sS -w "%{http_code}" -u "$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' $HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/svi && echo
-```
+   ```bash
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "<script-name-here>","resource" : "<script-name-here>"}, {"exec" : ["bash","<script-name-here>"] }]' "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/svi" && echo
+   #For Example
+   curl -k -sS -w "%{http_code}" -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" -X POST -H Content-Type:text/plain --data-raw '[{"filedesc" : "test.sh","resource" : "test.sh"}, {"exec" : ["bash","test.sh"] }]' "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/svi" && echo
+   ```
 
 ### <a name="boot-device"></a>Boot the Device to Have it Configured
 
-When an FDO-enabled device (like your VM) boots, it starts the FDO process. The first thing the FDO process does is have the Owner service contact the rendezvous server (To0), which instructs the RV server where to redirect, which is the FDO Owner Services in your Horizon instance (To1), which downloads, installs, and registers the Horizon agent onto the device (To2). All of this happens in the background. If you **prefer to watch the process**, perform these steps on your VM device:
+When an FDO-enabled device (like your VM) boots, it starts the FDO process. The first thing the FDO process does is have the Owner service contact the rendezvous server (To0), which instructs the RV server where to redirect, which is the FDO Owner Service in your Horizon instance (To1), which downloads, installs, and registers the Horizon agent onto the device (To2). All of this happens in the background. If you **prefer to watch the process**, perform these steps on your VM device:
 
 1. **Back on your VM device** go to the device directory and run the following API command to "boot" your device:
 
-```bash
-cd fdo/pri-fidoiot-v1.1.1/device
-java -jar device.jar
-```
+   ```bash
+   cd "fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/device"
+   java -jar device.jar
+   ```
+   ```
+   17:58:00.638 [WARN ] Using SSL self-signed certificate trust strategy for Http Clients
+   17:58:00.796 [INFO ] Starting Fdo Device
+   17:58:00.850 [INFO ] credentials loaded, GUID is 7b7e0664-5b59-44f4-bd03-b26cd84565f5
+   17:58:00.911 [INFO ] RVBypass flag not set, Starting TO1.
+   17:58:00.911 [INFO ] TO1 URL is http://test.fdorv.com:0
+   17:58:00.928 [INFO ] Type 30 [h'7B7E06645B5944F4BD03B26CD84565F5', [-7, h'']]
+   17:58:01.344 [INFO ] Type 31 [h'648EFF24B3D34437A917521402373171', [-7, h'']]
+   17:58:01.754 [INFO ] Type 32 [h'A10126', {}, h'A20A50648EFF24B3D34437A91752140237317119010051017B7E06645B5944F4BD03B26CD84565F5', h'8C03795F6FF80DDF80C46054AEC12B2FAFD63A2DCB9A55003FBF2196C4ABC106144387706E593D80D351CAD180637DAEE5C699E7CFD1EC7AEF8E4D11EB6F7FED']
+   17:58:02.020 [INFO ] Type 33 [h'A10126', {}, h'828184F6693132372E302E302E31191F6A03822F58201312CB0438F608D36629A0FB969E425821A0C709AE217B03DFBFA3A13ACC470C', h'BE1BEF3BEA3F80A41A3C6561634258987A7957589FFF558521A6EF7FA1A6F0FE66E10D72DA9413D2097D10663C03910B266C26939899A5CE9F4259176E6CEBBC']
+   17:58:02.029 [INFO ] TO1 complete, owner is at [http://127.0.0.1:8042]
+   17:58:02.030 [INFO ] max message size is 0
+   17:58:02.030 [INFO ] GUID is 7b7e0664-5b59-44f4-bd03-b26cd84565f5
+   17:58:02.035 [INFO ] TO2 URL is http://127.0.0.1:8042
+   17:58:02.066 [INFO ] Type 60 [0, h'7B7E06645B5944F4BD03B26CD84565F5', h'DF3F31CF54A64E42AE15D7B9F0649AE9', "ECDH256", 3, [-7, h'']]
+   17:58:02.279 [INFO ] Type 61 [h'A10126', {256: h'91947AE731144C4F9F06598D9827E4CA', 257: [10, 1, h'3059301306072A8648CE3D020106082A8648CE3D030107034200040B55CB2C56F6C2AF860B2720E27C900C5228CA5ECA28E94E3D083415CCC35453D6B60318A68A77CD2BBE31D3DCEF58121E6319859DF9D9948F4385F7B84217D8']}, h'8858CB861865507B7E06645B5944F4BD03B26CD84565F5818582054F6E746573742E66646F72762E636F6D82034100820C41018202454422E9DC5D820441006A44656D6F446576696365830A01585B3059301306072A8648CE3D020106082A8648CE3D0301070342000466A40E5C851D85C871B0A7916BDFA03E677A5B7A0C03D86B56093E2BCA7A1D1804477E7884184DCFF068FCF006FFAECD9EF3ECAA8B09AFAB88BCD80264159719822F582024A44369C235A4447531051C44414F190C946610618F7BE5DC546EEAB7EA51FD018205582080D1750A39C99695A3DED2BB3DFA7BD6156C9819334A3A1F5F8A4AE2F45943DC50DF3F31CF54A64E42AE15D7B9F0649AE9822640585600204DB3E21CB48D29376532E90AB3D597E6AA7003D2EB935949B1EEC42AACEAB6EE00203716A8350F838BF36817EC7C5720D9C663CC2B189B67A34E153CCEBC6DF181DD00102ADDB29C0F0F6DE5309FF0980F5C7063822F58204EC91E885E1393874C245DBCF0487FC3913972780336F9B8B1A97F6908425B3300', h'733684047DEF175F290D8FBAEA907D234108AE53C139D58039FAAA19DD56F4B2C6791AF0D9EE63DE73BD312B374D2A1631C20F5EDA53E1F2F28334308D7C29C5']
+   17:58:02.302 [INFO ] Type 62 [0]
+   17:58:02.326 [INFO ] Type 63 [0, [h'A10126', {}, h'84822F5820AB080B7F1DA1543E0F324897E3EA44500D844A9B287F7E2751AA6E5A4DD7A2DE822F582064C918492307C87886D5AB446175B57DCEFA13F562C2A769FA1670D84B131B1BF6830A01585B3059301306072A8648CE3D020106082A8648CE3D030107034200040B55CB2C56F6C2AF860B2720E27C900C5228CA5ECA28E94E3D083415CCC35453D6B60318A68A77CD2BBE31D3DCEF58121E6319859DF9D9948F4385F7B84217D8', h'C5618FDAB751EA9817A533257633492ED3E7A015AEE9D4AB88CD9BAAD53631EE3FD049708E4EDAB6E14F90819BB46848373D547053F12B9C9EE010C0984750E1']]
+   17:58:02.463 [INFO ] Type 64 [h'A10126', {-259: h'4D8241444B854F40AACA5365D03F7B81'}, h'A30A5091947AE731144C4F9F06598D9827E4CA19010051017B7E06645B5944F4BD03B26CD84565F53901008158560020A7B8B6EE9C389A1017CCB0B1B1B3124E7406EEECA15A455B85D47F98C551DF750020B60659A6F4BCD4D4DEDE19E44631ED84841945AF488991153BBD0AD8DB3F09B10010FEC3FFD11C6BBAE4CFD659FFF1B3B8FA', h'D358968436A513A2B0A8AAEC2E4F13502C28E5EE95DB32A31F14AA572978B661B870E146C190F9D2EB314A75A488CD486E114810E32E43C69E44449E698F9DC5']
+   17:58:03.105 [INFO ] Type 65 [h'A10103', {5: h'11EAB8B71D7E7178D1791684'}, h'874F0153407B353B8AD10A3A48989989A575C6528982C9F53FE588EE6B542D29A90965E1B56D0146902B48CC2C7B9345A8CF0269799ADDAA2CC582984277913971ABCEF76E00DD0428C5C14B6C17FEFF99E80001E04ADE508583C5C47714313EDDC1C9F0449A04F8DA4A855C4A05083D7D0D11D11210FF0AD1090C5B9E68B9857959EB182FE34CA8571F5962A468BD5E20771B521EA4B39104B8CC00747DFC8A19BC165508D31C7897FA3C588295511707C5627FCF9EBA6B32CB95BCC5953983298441D7D0198E045A71F0523D627D74D5FACB3F3A6107993E1611100E5B8DCD4E25083A4C0D13E49C5C3273324096AD5FAF899D7C8919B6F3DAD0D8452B06811A24CA250D4B']
+   17:58:03.115 [INFO ] SVI MTU value: 1300
+   17:58:03.115 [INFO ] max service info size is 1300
+   17:58:03.117 [INFO ] Type 66 [h'A10103', {5: h'4B7A4AEDF7CEE6CE13950941'}, h'EE297B40A321A13BDEC1F1B21002318361DCFC6D01537DC65D0536AFAD5479F7A49716DC8BBAC661CC1A0F5E71D4DE465277F133CB916DC5']
+   17:58:03.157 [INFO ] Type 67 [h'A10103', {5: h'744B1841D471639F3D9E6D2D'}, h'0DADE05CED31B68267655BF96783931316DB']
+   17:58:03.159 [INFO ] Received maxDeviceServiceInfoSz: 1300
+   17:58:03.168 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.171 [INFO ] Type 68 [h'A10103', {5: h'67BE71F7062D3F5F094CFF2F'}, h'797E56D745D36CD9A62B0F4314DDE0952C925EDBA6C071E08FE2A426BFAD16613EF634395F508B3946A285DA2D54F09C5A2356F7FBBCB3DF418F191F15829FD347EA92171047A7381345684789B62024CD899F3D4D52C21B2D4193791F001F5A22680DE673D8D4C2AA59710A5526F4D72616FB235F62B6D588DDA5F8E6F1314640870DEF249B68845F58AD178A8978164D50143D7DBBA4C240F0D5553935FE711792D4A8C1B0A7EB0FE971801659492D45C1699E45927479AB34641D1DEA0939F4805CF997AC13BEC88D08DE352D8FDEAF9E93D2D660FFEA2E422F8A6EFA67611FA57A279135123A9331C336A738D4EEADF4C00E384BFB1CEDB5419E1AAD54C15C67011C472228BC912BE110208931DFDFD1BE2E1E55F625B240EF030C14B460']
+   17:58:03.236 [INFO ] Type 69 [h'A10103', {5: h'50371CCEE5FDD33D86DA9425'}, h'C663AFF7F04CD55F12B0A62C2422B268EE7D95D3EB999A1D6E61F9ADA87EA2D81F4EB2343CB6F835883224315F8268E3892E92C24868D9CB458FD8F235D55DC4771D878288C2187ABCBA343EFB038FE89646F8A6E0B903AEF5460A545CA58C2DCC68E2CCAB9744417C2F13324D27194B38F1B0FE6DBB40EF16E3DD02D4D7D597EDDACE1C9177B2838CDDC193ED75C1F7133F9EF1559FC69C798037FA24B45C677F04A48EB59EBB042D8F5A0C9E56FA143A544069C50E2074BB7A7EAA72E30C9CA28B2F3065406187677DA77D4B4B1F2DAF63D1EE8A26E715A27022A07FEF19D441BCA31A8B4E5B4BBAD475707E5A0A90A5EAEDB91F29970AFCC3727C55ECEF49ED8FB529C24A9A2F563644222DA8A3EAF28BE8CDCE7B6C126CE3309F502831EF99D0EF05732D4C723E9DD08B6B7111F3DA1F96F14F820676B46B9A6C8FE44D8AB3F793D141A0CD60F5B77A4A6B176937107575E78525BB86D4FDA2CE0388961BAB6E73D9BFD3972850901E9B305CFE599083C0BD5229771CEAA31E48858D6959BDC19C1DE8F6143C14D7631B0267B26BB0C020940FF98044C2762862AEDABD5EB5A9D81872D0509EEAEF222DDAFF3740D56287E492CD5655B26F02DD3D1BB95EFA74A8AD1CE3BBCC665FFD5DE74203C92C64C5777707FC9225D0606699BD8E0F0527ECFB5F828CD57111F5DA8AD591559FC3FFEA2ED02DB1DF507B98BDE3BD7EE99357C5874E0239A1C2BAC3131E58AC0F66002284DBBD1E93FDDE0709BC65027AFB58733DFCDC2AAC0D05D6A574D9BAFE40C1FCA39A569AB9993BC64568F644B874E0E10D61B3775438A7BEC464D4CC2CE920AD318F0A2B3E1175E6B92724AAE14DC2DBF5488976058094DDE901B92CFBDA33735A112E9B1C1F50278979835EF5C72DC6FF4789A171B26CC9DB46047124A16ABF29C658A6C0380BBAB8C63C61D24693CC01591AF22FFD1DDD6A892D7CA6FB2240FAB6B85A67BC0B8F50163403CDFC8AA8A40A8B147C25120F8357B7CDBDEF25AFE720744F70FE7F52613A7087CDC00123A85A5059C3E7BE59A864884F55319542C854B363D091573137711680112C11435256697097BF0EF16E92C9906169DB782737495FE72B4E8D0AEB2B6D766EF9BC18AFBD41DE77F052E498FE2F69345A96BFE1BDDB18AFE4C17C4056850B0C54DFD8A60782D3C9A1675A5578208DF274781393C5B4D10671A910228F8F0CA0F1980E7C0A9FEAE5201502C5782D62F8121726571CB372150F7DF760242296305734F339D3E3382C77615E16E0BCD2B51497892A33E00CFCE7827217998540E58097D0380C4E4F4BE8829C1130AB8179A6D101490825068B81E2D9707D7955DCF1801BE539C2E1A0DFCDF8DC16089E2D9CD24EF2F133A4462DC51E890F6A5A384D99A1B9AA2FB48751689A9F242CCCE752E04E669FD3E00150DB8B2DCCFC60C6499BD906792E5503A5405F64D651CAE910603FCF2E5E0DA688EACF65B0D1658435CA58799BCB64559E2ABC84FBAE61CCC9CA9122BF2CACF79AB50A0E10060333229504A6D821ED236100710F8EFE6DFFB3DECDD2E15568A937B76027307051FE431D77004C551E66019673C502E63D4550E81F6DDB31A631F0169BA2292949300F95CEE28ED1EF59D12BDC3E3372435AC3A48C49676A0C4E75F0B6364EDA5B9C382D4803DB66719DC93FB87DDA15DE26FE27737BC66C6A0A55005C88B4C9F26EBEAC31627666E8822CBFEC22A767E8964237DF040AAB0EE3627131A93528DB5102B523F22E93BFA1AA60733A4B74']
+   17:58:03.242 [INFO ] fido_alliance:active = true
+   17:58:03.242 [INFO ] fdo_sys:active = true
+   17:58:03.242 [INFO ] File created on path: agent-install.crt
+   17:58:03.243 [INFO ] File written with data[[B@7dff6d05]
+   17:58:03.243 [INFO ] File created on path: agent-install.cfg
+   17:58:03.243 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.245 [INFO ] Type 68 [h'A10103', {5: h'765C54165E58D9158DBB603A'}, h'2550454B36FFC2B3B01784A6A6B6CF1BA7D750']
+   17:58:03.271 [INFO ] Type 69 [h'A10103', {5: h'D4EB3B7F44D11513C028C916'}, h'82CFAE971616587671FECF4FB25A353236561E1A6FC3471A0995BBF4C24B1DD329F6679B0EB74A10C0852C10759203325F3EE29A6F005C6DC771372A8DE7B98D8ECB1D4CFB1089165AB7CD298E3D58363BD019E5E80CCEBB2D119D4E650F12CB02704BB7071A5A55967D38F469E5E8728B02AFA6A4268B0332EEC5291441BF318DEBD5F58D66C3153E2AC2CC21EBCB151F6779C8B912213FCCC442866C02564003FFA5AE0AAFCD8F268D727FFF37F8D62996DEF3548048616177EBA037731FE063D27ED41CD3B9E28D50CF8712']
+   17:58:03.273 [INFO ] File written with data[[B@a33b4e3]
+   17:58:03.273 [INFO ] File created on path: agent-install-wrapper.sh
+   17:58:03.274 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.276 [INFO ] Type 68 [h'A10103', {5: h'26D4A156F4A702A24CB955BD'}, h'56D48ABB43D65F758AA999B987609C7ACC15D4']
+   17:58:03.298 [INFO ] Type 69 [h'A10103', {5: h'9FB9260DCF2243C1E6330E51'}, h'F3477CE9ACE5243B639ED0B7F87BD800D5E0E77CA5A1EE8F47AF7BEED696905F87057FE77F5F6B5C28133E8E068BC57B8B6DC1C442564261D40F03AD4A38113ED8B51BD105B856CAE411BAB5F940AA39B27192FD4A0B213BAD7DFA3869E749BD250F2ACBD66F23451196F93B16B97ED4A90C8C7558C91F8BF4057018B86CA5AD3ECEF1A59EA5DB8BA05918084E4CECF103766795C6CB6FCD9D7FCADE871FAC2DE4A542A04D588FC3CB95845D4AD3C623BD375C3A737977A0E06D4458E6F8036992AD1E37B982960AA02ABE1AB128FC179737FFA084BE70F27E6AEEC17A8D2AEA506D1FF265942855A06435A71D26DAEFAB70A37589EE200717C3C261DEDCFDED042268977EB52DDC3D01503CF41D32F1343AD05FB034D58E680CBE9BE0E5A479F6651A5A24273D059473A3516D07CE01D5916B168977E575E0E09A89E1386FD935C24FF58472986CE35F4369DB027DFA796D074D1D05BD1C31FA7BCF8B7BC69A669D10BE11CF9482350F6FAB33B68EDA02C9418A41EC2DE6B818E6777640D5622E1AD040BC5C7298AD52E51C301EC2A0BA26C91AFAFD316A2BB8D47AA0BF8FF7AEB3B8D99BCF627BFC0E1FE2260D6DDC0A47814D74B7567F3A95C3412D69ED3E31FAF05421A6F0F01E158BD3B180363B18B2C95E88B59C28821949C2B52FAAD6A5BD9A75E15A333B21CE92F84FBA664BCE5DD4A4A9D234BC5A6FB6B5171F44A4E97493AD73BB9E2EBD25208533344092A11BE19A9642BFF78C55BE3553BA7092DD53ACF798FE3DF0FC7D164F687BEF028A8487D785577880966FCA905B55F0D1143C668BFFE8DB9707562C4E8BCBDD95B7DCFE27F9EE6B48316C6F5F6D6CB4CE47CE824B96EF04BE7A949B1DAB8FE1ACBE26E5D2105D036ED8A8F4FDA57392758C12DC7FF9F974ABA8F5BFF3619B6A4D0A16FEFCF2E6ACDB8609E40ADBC8FCD6EF92013E5809C18C95D73203B885B8D6BC5E4038BC5361ADF9B06E808439562042FAA38251C4BC2E990EB599381E6E7A2C112B34E67943406B5E37B6D34DDF39606D0AB24D3D9C590472B02F48A6D0CAC1720E2CBFCD2C3903CA9DE408658D894D37D1039B8EE357BF8E4EDBD5E534D274B180BE0D7FFDB201740182752A1B0F8935B1D2BC16B89D9710364798C66AE9B62822ABD73D2AB3D3408BF68367BC08136C9B73F381F02076D4FCB238BD7B24DC890ED6B0684F70EB31E42696F67B475E93A983B09A31F061429C2D2BB22B7DFE9A28605FA642CC24F132CF3315CBEB14D668DAA5B5AF7156AB6A623A939F712D9ACDE600FAF0C4B6E12A8B4CFCE5DB09300D6C18CE1AEFB28B0525CBD65425FAC44A0312508260FECF00195A7DDE8B592B71484DE1ED1DE07E8AC57BDEFB67DD78E7A43BA61AA90AA3BED291E91EDC8F02A92526FF7ECC0203C37B4F1C9520295C9BD8F8381FD6DB6A1F926EE80BF4960B2A39AD24F76942CE95885195AD558C0BA55709F0182877AC788E6BABFCC87996BDD81A9D71E534BB954090F47199C5B172C640E24C606462F04AB84C07913CCA3B4AF42CE259C018DC180FCD9223E7B503555AE9087A0174C601B451A9842D41618A6E0171F6214AD12B7DCAE97E5591DBA0049D456CC35FD1A0340536DA8809701E1DB2F77FA602E551F0EA1E30FF4A3B259140294C5CF4A6CA84E0B11D32E355D26972B7C3430F96C27891A82FEE5CC13EC4C6E1818F5BA859DE919BF8755A67CD36A33976365C7BCDE3CC0E0189CDB6DB0421DC2F826DC153B8AEE20E391821C2605738BA7241E0CFF0511ECBBA045C834119D280FC390DF74F0504CAEFABEA8878DA102902C9D6F1F8CC1CE9E181088575AD6DA0030B5A0DBFD014869A2DFF']
+   17:58:03.301 [INFO ] File written with data[[B@1fba386c]
+   17:58:03.301 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.303 [INFO ] Type 68 [h'A10103', {5: h'308F947CDB0437DBDD588FC3'}, h'D6982F302EB4435B612E5FC892178BF9970947']
+   17:58:03.329 [INFO ] Type 69 [h'A10103', {5: h'9EA8C126CCF00DDF6D838482'}, h'A55BCBC41D7A840FBB2BD249EB40BFD774B5BEFB52938A3C8704ECFAB484EA9A0B7CD1E69EFB3795B94BB3E922FCBD29A23235E4A25E418C9A914C0BB27846368D6C42D849B1BE97966FB9911458F0B325F45BF558D653D20EED3F0A3A89FDE4791AE8B1FAE4B1036F51C6492B5C516996E5AD0C2025CF4D3CD367F3809FFAF3B325CCB3BE8D5C6190ECE21DB94DF27B454A23D01DEF83FBF22F6BC5B5CDA472CF5227196DCF80CB56793DADDBAA7B3BA7E3F5BD05A87C56663D3DF0124B2E410E91CD6363CE3919A97DC1E825A19F6CDD3D6CEA5042ADB8477F8845BAC5F92816DFE983C73D6A8F0E226D1A4629E272B142BE896E0F66B287D3B381E46A735DF2A784C6CEA23C21376E0CB6210CBA3E30269C779657723EAB072B632D4D09BADC7EDAD3616994775F13B9FC2E5C0A3467E82FCE9826A35217ABF2B36EE67FFF967A940B775B707207FF19DE580DDE2ED8ED11617E0DC51F66FD9818874F742F537C4A5A7C8D2CFB85A80E33B465CCE7FD64F6399EC7E1F91543DD9BC038EB9949722E52DE9570B88E80C8A64B980EFCF7A386C9C5248B84C2022F00109E30A5F184754170B13A69807529E5AFDD1B0BF6145DA2D596F4A99E6DD564E86070E5C0F99792DD66AAFB2EADA1A900C4F199C8544DD5E8335FB8C2334313D294FF7ECAAA69462F1DCF5681C7F7FC65F1FB5DD68A2AD7049305AB02F943EC108D056A1C02FD4AB488A22EE48D1C2740C260A15EDF977E96F1A0BC5E5876D7F3E93EE47346BFEC9E7FABBA79B8665684140D5C29F99B36AB75CB3FAF42F02259C3A8374101F21A3364FD6AF62160AA39047A0909C9646E53F7EB33F4550FB2DFDB2596E8C0452F02DAAD48A07AC7CD46F273FEAC3BF29F363964704EC8349D9972E9009F604DD958D669E0FA0F388D8223EC7E28BE1493F3F125183C287E31EB25888CFD07C5DEB37FA6F42E277C3868D54F26B19AC08E337428B833931E8F7A77E764EB1779E6FD9C7D7FC0385AFF9B806BF89F1A1894CAF9DD1AB6766F1BB024397588C3CAB80C7B3090FDBC252E77EE49D25A37453D202BADBCF46964BD33D26BDAC79EC7E3F09AC507333DE645917CF9EF6530E1ED31304F5053F44526E59D6DAD26DEEFE285268F72F2256DB3A520791C28EE2CF3A5B4D5AB822A3312B82FC0EC9F5A5E97A82A983031FB0435B23DCED95F3968129EE0ECB3FD0BBCF97ADAE85ADD0A84D6281EC3BB076D48168A1B9C020EEB4FA5D60150A895A8791BB014BC68BFA91044F5F5452FC5EA8EBD53029148A0D081B8FA4BA9D9984C271AEC7FD9E942244FADFA26ECC80B3C2F8BC5DFA03CFCA82EC36FA611B34A32D971EBA4C54E484681795E7344CA98D87F7EEFDA2C61206096C0C019A5E449FAF0F3D10E091FF6934344C43C8C8FC4452C29D6E7DF3EABA66005943D27FC1139F7235E78089EC83322A07FF3CFD0CDFE0A27CB99F793A9096E78D4A0CE8D3D8BB71464150243E23BF36C52E0E3A89D6A7B4ADC03BA4A5BA0B95B510C51C305EEE7B10A114071FA9527E32D0B0DCEF3EC433D3FBCB7FB18FE6911129B7553F56CD3AE458380BED6B83F501C73B14A11658DCFD328AB39EEEBEF5E30D32BA040B0073B9A3AE32CD9AAFEC4C4C29A80A2C16D8094C1FA9CD0A34E19AE572A960681B3F578874DC88E52429DE40EB61448436D187ED053DA85413308716B5AB268F74C7C590E7EDEDE1434A8FA4BF52B1C75CD1C8D05A5CD373FB5061ABCBA55DF096DB302B4306A293CFEE4E51D6A628D5B9CBBC00327D5A4DEDFF0B6AED997EDD4DF2A4311A883EDEB41434694CDFF5E3E2E0E0F6DE87D6560754897647EEA66A694555785D1FB658388']
+   17:58:03.330 [INFO ] File written with data[[B@3874b815]
+   17:58:03.331 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.333 [INFO ] Type 68 [h'A10103', {5: h'7F94EAEA49513357E9575DDF'}, h'1A4CAD9046C1B67E17CD5B9A66655EFBC5FD8E']
+   17:58:03.357 [INFO ] Type 69 [h'A10103', {5: h'FFCEBDF40E88F1B3742DFCDB'}, h'A111396CB3D917C44F3B4C3272677B20ACD08FBA10D17976ACC904D7D5C4EA469AFDF7D12517FA3BD4380E9B285899E5D5F70205295273C46AA6AD3C1F993D09F57BE57BEFBFFFCF7DE9EFE74A45FA82E4E87E870CD4F358E5D814A8D50158D6F4B3A13932E357B86A18646C23B3180893EA4F67B37E79652AE2D0BE0789E6FCE9BDBD35CB7A458A2A0D7DFF168EB55F217B86F6BBBC4707EDEF6B8EEF491A24DA1D8A638FCC4BA18E3AABEE268ADCB5F2A42A37A687A4D137E952CDA41A254E99723526F4965C459B0CEE4658C12C88A929AEF66F7E8A5EEBE2F1B6A436DD61DB78E19EC4E1C124AF1A0B2993EC9D4F06C345BD377CBE505BA6DAC56A3F4E368E6DC4D99AB9F8ED472F9B8D3EF5D937EB729CAD2500CE4FB2DC5DCF5F35CF3932A533C7D6683211077C54F7FD569391114496F8F62285425DD4901C1BF9599C4A0F2DCA1DC96C366C10AEEEFB1DD8E5987A41C4F4C02141D19CD93C3169C66625F7DFEBCC56A2C8BADB21549BBD55E9D5D293EB803F5A0FDD297A83780DBF12A47458EB7B4482D8F22BA96EAB88EF5AA071A695A2C0017ABA36A11EBBCDE0D39E6DEF22769CCFD6A5D25D5641386D22F3EB53EC62D1CF71BC335692D9F57957BD95D8F19738A396447D08497EF1548B0CCDDD128FD0DB183B56FCCFDE10A03073C3DA9FFA581CB8B5FA456A8B0A7CFDFAF20E71B848975A308AEC88296C7F54FF2C17FFE60FB66C0CE19F6533B04823AD63D7CC375FF0F0867C9FF77F4ED853FAAC143C9BEA01C70897ADE88579679DD9CDD8BA9398536D0FEF6DEAB9157B0CC9AF311274C02BCB642A618B10F6CBFFF5FD18D79FDEA4FFDB04C13D8437EAD19802455756F89AF3F88CA615894E0032FC0E21C71C3A042462324D753437F8BABA7B2B1041F4DEA0B1BF03AD7C50E6BCE3FF8BC4100B25A417445A66962454930F00109A89A61F61B79899AF200D7D1688002B6FE382D07BB916A88DBF100CB1C8FA704D87EF623034F7124F7FA77B09EB9E4C72DBE2154BD220049A37EF261B9C82931E82152BBE9EA4310EE46FECF31B1CA90CAA75CDC7CDBDB1C060BF50A3D5F0EBF283C24D7E86A95E3ED49D7AD1405DA1A4E88D51C1B151BD210446148D04DC0F3E83F38CAD581294F809DCFBB5ECC5B23796771BC6254BBD0E3B1797DFDA87C100E34DBFF89A1A4B5ED28A866BE5B594A1D9865349194D5328865717053488620CFAF116C288B9813144300D7F402368EF1130B07EAC422267FF4104BBA2A4987E46D18B20EC827757F8F7C14557AC4E373725CC371AB736F2EADD9F92E2A46EE5E79C7B24FC8111D312797CF146CEF2C770D401F6FE1FCB41EDE015225E7CE3E427EDD6366042ED69F88816F6DBC9CD708E39294001F527D79FB2D75182F5C454CCCAF2E1718022031A9C5E21C3B54C58646D5B015231729E8D81BE2727D6D1EC503D7B912F3A4502A20191C9E67864C650F106D10289516BB6347E2854EBB2E122F4CE0D60C2AB258BC52C1AFBFCCFBD91B419176D114F96CFA792857704C6662EC005038E3E6BF3EAC585630DAB0531189E9FF93C59940D386B7F2C14C48FAE2E0302F684AC37851114254263E7F5FFB25E1F071FC0AA13A6388AACC7E22C466D1075EB93BADADC5EAB8CA746642AA93C755B531FA3D1C336C7D0CC9BE4EDDC2687FA1AB767ADA2FC894C8296D1EB5CFCE9F2EC07D01EC667AA2C4D3CF514D39245C47A407CB7CBAC29413382D41E9B2EC1023FF922E11BEA45CD0AA35B089EE3D35BA6C19A05064D36CA222BBA17441E8DDBF3F79F7DB1032992F0A5A364B91C761C5A19BC9A93A50EBAE019064A98B7EF4086441C214747868B78196791']
+   17:58:03.358 [INFO ] File written with data[[B@45f421c]
+   17:58:03.359 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.360 [INFO ] Type 68 [h'A10103', {5: h'0B9DEF41A8A2057C862BDD92'}, h'E7641043F036C1FC7FB09E163544DA312FA90C']
+   17:58:03.385 [INFO ] Type 69 [h'A10103', {5: h'66FCCA5B962BF0AF3A691476'}, h'6CADC0D9A5AE4C41F0153599BF544856A7043793CFADD6D4BAE33E68085CEA674B6859BC16A43B032649D549700605A8A57064AE99ABB29B718767032FB1A34D498889AB15F63E11541C789D72CD5F87E650337B524CC379203FE0A713CA5AF9A9C962291D68BBAEA540AB3A4C5A4CA3BFE8460F98FA950CB7E24EA9C74F058367CE3BE67C64542FF0A94E8223F2C3E659467E0BFB23D4D073007045AFF088DB0F7287BFA440C39DE7B84CB91ADD99E0344DF9000DABED9A3D8DCD35C06E5A822223C938B5E8360F47086D92BE9C54D65E85C3FDDAA09D91F8DA7A0F737BC94BA0C286C588D47163BA16408CE4F8D4ED719D346C39C49C4F3DD9D39FAC4F863DD509BA251CD7EE26F500AA29D3D7927171720BA31BD493C6C9688E8A9C6A0E76D29FE450085CE099EBA54B121522D966F5D0D1A61595AEBDE6F90E1231C96674BF36B6476710929B165D7B0204EC28A36DDF8C5614C6197A64A30FD45F3B2AB20BF73D5072478D09EAAAAA29349F405BD02729E80145FFABDB1309EAD9CD0E51FC1650A31E428CA7E7D084232D6F8BBA5C1CD9B4749B783EC3E9A54C1B5FB6FE76F0F6404D618079A836DC40988BB2A446DEE0DA9B664D5229FE28EEB4EC5F84E53A0E6FA70000BE1098D36F733395D014BF2B09010BD647931952DB4A12ED6F6D8E776F43C506CD8686EF763AF3A21EFEF4E7B947A4536399B371959EF5EAFA8877456D8E80CCE9F26084E8A44892CA1582D3E3760C118165F6EB9297F9273F72525D80E86B4FD4E28FA76AB213E13CAC9B3F6E203E8062E37A5C85D8E3A3B80C51E91BB78E13222DB240E7DC12AF812523528C4A90BB2C44862BDF9218BA122C07A789E3B0F4129635555C75A4AC8BD1D87770250F04C65FA4A81F91227BAD6D73812F584355EEE6932411FD9E06C5FD8188C5A981B9631AC7A96EBEE552B4B1C5604DD6D627860B1F57412D927BCDAD9F0A87E1B2F759E913F367B58432E143190FC42B8346180280C41D9F929AC220B711880F7104718E1882881EE85105707A14161BC509700155335301CD7963877E112BB520417DE64E35B768B0CE442A6B26142BE6A9602B8BE1AC603DDFFCD0E3F6FB1214FC5064681CB4B5C3114760FCC2C24A5796771D94E23E7FD6618B8393129CFE8AAE2389706A3CB4A432D8F8DD3EC5D38328A8E3501E8C94428BF6BA2D667BAD598CE580B7257D8D938CA000B4CE18C382D9273E7B83C07CFA83431F4DCF7B422A375892113B24D351E3FB223D41290712990654CD8D7E90D85AFD8EAE8E4110DDC2A60FA44114862EFF3734FF3D60F7379E2738BD72DAAFE74AFCAFD14F9AF69B4BF51BF2B2EDE121711BAE63F2C7944C26EA9DA6CD48C9293B6ACD476EAF63C983F0E5D218EF0ACAD88E39EEAA7330BF62E762084306A89C45C05F1AA20E39ED6845BF1225C810DA7F52FAEBBD211C6695977EBBA90C71A8C4A949B6E30F4B15DE89F7BD3AB9C80329A5C2A273ED9070851DDDE7']
+   17:58:03.387 [INFO ] File written with data[[B@39008c9f]
+   17:58:03.388 [INFO ] File created on path: setup.sh
+   17:58:03.388 [INFO ] Completed DeviceServiceInfo messages
+   17:58:03.390 [INFO ] Type 68 [h'A10103', {5: h'EB0B096BC894151998EA538E'}, h'16DD59280D69F8BB1E8369B13FC740DDE80291']
+   17:58:03.404 [INFO ] Type 69 [h'A10103', {5: h'5DC8BDB61630FE57C6C20A86'}, h'C78EB5B8CF96799F13DC160684A52C3FDDEF46BA7C4F36878F89A622259DDEBA22AEC69BF460C790A535461E436D917CFDFD8F8055902D6BBE7B9DFC4034007C0E2F9F601F133E6053495F7558D293F11FB3E26F29574D42245E67B1F6EFC0AB8DDCF911B3E1DDF14E1731A2B9ABFEB9F336348A703529713D53D1E18F6CC589A7B77E73425C43A0E7520E751CB1892E8748943434AB373E86ADD71D32FE56AA7D86F23356C9D5A085279066105E12E811A7EC1A9548F46B6FF66344013591D1AE0D7FBB5273B2D66483AD8D731353F632B007649B0A45DE7519F4178B5E2B8A288FC4C84D24A20506A61DC50AA45B10D9C8B94751C965897F9DE665878094298D8ACB786E75B939B4649ECB22EEB0A2015A0039C0C37FB09E460D6351ADA3F1659EFFE57FD464023FD959571DF2E7CD311A6310CE8ADF69']
+   17:58:03.406 [INFO ] File written with data[[B@95bb2a2]
+   17:58:03.406 [INFO ] Executing command: [bash, setup.sh]
+   17:58:12.749 [INFO ] Completed DeviceServiceInfo messages
+   17:58:12.751 [INFO ] Type 70 [h'A10103', {5: h'17BB4D3BF1B9A3C976707B29'}, h'28670299DDF01A5A127DA12D719563E9F5C9288D91A90E82E5F26D94BC67175A7420']
+   17:58:12.838 [INFO ] Type 71 [h'A10103', {5: h'845CC6C0D0452F0FF9EACCA6'}, h'95623D74C7EF373721BE86CE54DB6230754AEDCD00CB3FBDDD264B142513FE73CC66']
+   17:58:12.839 [INFO ] TO2 completed successfully.
+   17:58:12.840 [INFO ] Starting Fdo Completed
+   ```
+2. Confirm the established agreement. Listing should not be empty.
+
+   ```bash
+   hzn agreement list
+   ```
+   ```
+   # An example
+   ...
+   [
+     {
+       "name": "Policy for myorg/7b7e0664-5b59-44f4-bd03-b26cd84565f5 merged with myorg/policy-ibm.helloworld_1.0.0",
+       "current_agreement_id": "1f05b03f9e5e50f090dc3bc00ec8e9460d15f99c4efddde213329e4b522c8b7d",
+       "consumer_id": "IBM/agbot",
+       "agreement_creation_time": "2023-06-13 17:58:21 -0400 EDT",
+       "agreement_accepted_time": "2023-06-13 17:58:24 -0400 EDT",
+       "agreement_finalized_time": "2023-06-13 17:58:37 -0400 EDT",
+       "agreement_execution_start_time": "2023-06-13 17:58:27 -0400 EDT",
+       "agreement_data_received_time": "",
+       "agreement_protocol": "Basic",
+       "workload_to_run": {
+         "url": "ibm.helloworld",
+         "org": "IBM",
+         "version": "1.0.0",
+         "arch": "amd64"
+       }
+     }
+   ]
+   ```
+3. Check agent-install.log for any errors.
+
+   ```bash
+   cat /var/fdo/agent-install.log
+   ```
 
 Now that FDO has configured your edge device, it is automatically disabled on this device so that when the device is rebooted FDO will not run. (The sole purpose of FDO is configuration of a brand new device.)
 
@@ -257,7 +342,7 @@ DROP DATABASE fdo;
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
-- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.5/owner/app-data/service.log or use command `docker logs -f fdo-owner-services` for error messages.
+- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.5/owner/app-data/service.log or use command `docker logs -f fdo-owner-service` for error messages.
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed and environment variables correctly exported.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB. Also make sure that you posted the correct To2 address.
 
@@ -266,7 +351,7 @@ These steps only need to be performed by developers of this project
 
 ### <a name="create-new-release"></a>Creating a Release in the FDO-support Repo
 
-- Create a [release](https://github.com/open-horizon/FDO-support/releases) with the major and minor version (but not a patch number), e.g. `v1.11`
+- Create a [release](https://github.com/open-horizon/FDO-support/releases) with the major and minor version (but not a patch number), e.g. `v1.2`
 - Upload these assets to the release:
     - sample-mfg/start-mfg.sh
     - docker/run-fdo-owner-service.sh

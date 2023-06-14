@@ -20,18 +20,19 @@ Arguments:
   <owner-pub-key-file>  Device customer/owner public key. This is needed to extend the voucher to the owner. If not specified, it will use default SECP256R1 public key obtained from owner services
 
 Required Environment Variables:
-  EXCHANGE_USER: Exchange user
-  EXCHANGE_USER_PASSWORD: Exchange user's credential
-  HZN_ORG_ID: Exchange user's organization
+  HZN_EXCHANGE_USER_AUTH: Exchange user's username and password.
 
 Optional Environment Variables:
   FDO_MFG_DB: Database name for FDO's manufacturing services
   FDO_MFG_DB_URL: Database path and protocol
   FDO_MFG_DB_PASSWORD: Database user's password
   FDO_MFG_DB_USER: Database user
-  FDO_RV_URL: Usually the development RV server running with the owner services. To use the production RV service, set to http://fdorv.com:80
+  FDO_RV_URL: Usually the development RV server running with the owner services. To use the production RV service, set to http://fdorv.com
   HZN_EXCHANGE_USER_AUTH: API password for service APIs
   HZN_FDO_SVC_URL: Owner Service url.
+  HZN_LISTEN_IP: External address of Open Horizon's Management Hub.
+  HZN_ORG_ID: Exchange user's organization
+  HZN_TRANSPORT: http or https. Only http is currently supported.
   rvHttpPort: Rendezvous server http port. If no http present, then set this as the https port
   rvHttpsPort: Rendezvous server https port
 
@@ -45,29 +46,32 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     usage 0
 fi
 
+: ${HZN_EXCHANGE_USER_AUTH:?}   # required
+
 
 generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:]"  | head -c $1; }
 
-export EXCHANGE_USER=${EXCHANGE_USER:-admin}
-export EXCHANGE_USER_PASSWORD=${EXCHANGE_USER_PASSWORD:-}
+
 export FDO_MFG_DB=${FDO_MFG_DB:-fdo_mfg}
-export FDO_MFG_DB_PASSWORD=${FDO_MFG_DB_PASSWORD:-$(generateToken 30)}
+export FDO_MFG_DB_PASSWORD=${FDO_MFG_DB_PASSWORD:-$(generateToken 15)}
+export FDO_MFG_DB_PORT=${FDO_MFG_DB_PORT:-5434}
 export FDO_MFG_DB_URL=${FDO_MFG_DB_URL:-jdbc:postgresql://postgres-fdo-mfg-service:5432/$FDO_MFG_DB}
 export FDO_MFG_DB_USER=${FDO_MFG_DB_USER:-fdouser}
-export FDO_RV_URL=${FDO_RV_URL:-http://test.fdorv.com:80} # set to the development domain by default
-export FIDO_RELEASE_VERSION=${FIDO_RELEASE_VERSION:-1.1.5} # https://github.com/fido-device-onboard/release-fidoiot/releases
-export HZN_FDO_SVC_URL=${HZN_FDO_SVC_URL:-http://127.0.0.1:9008}
-export HZN_ORG_ID=${HZN_ORG_ID:-myorg}
-export HZN_EXCHANGE_USER_AUTH=${HZN_EXCHANGE_USER_AUTH:-$HZN_ORG_ID/$EXCHANGE_USER:$EXCHANGE_USER_PASSWORD}
-
-
-if [[ -z "$HZN_EXCHANGE_USER_AUTH" || -z "$FDO_RV_URL" || -z "$HZN_FDO_SVC_URL" || -z "$HZN_ORG_ID" ]]; then
-    echo "Error: These environment variable must be set to access Owner services APIs: HZN_EXCHANGE_USER_AUTH, FDO_RV_URL, HZN_FDO_SVC_URL, HZN_ORG_ID"
-    exit 0
-fi
-
-
-deviceBinaryDir='pri-fidoiot-v'$FIDO_RELEASE_VERSION
+export FDO_MFG_PORT=${FDO_MFG_PORT:-8039}
+export FDO_MFG_SVC_AUTH=${FDO_MFG_SVC_AUTH:-apiUser:$(generateToken 15)}
+export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
+export FDO_RV_URL=${FDO_RV_URL:-http://test.fdorv.com} # set to the development domain by default
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.5} # https://github.com/fido-device-onboard/release-fidoiot/releases
+export HZN_DOCK_NET=${HZN_DOCK_NET:-hzn_horizonnet}
+#export HZN_EXCHANGE_USER_AUTH=${HZN_EXCHANGE_USER_AUTH:-admin:} # Default to organization admin provided by all-in-1 environment
+export HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
+export HZN_FDO_SVC_URL=${HZN_FDO_SVC_URL:-$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT}
+export HZN_ORG_ID=${HZN_ORG_ID:-myorg} # Default to organization admin provided by all-in-1 environment
+export HZN_TRANSPORT=${HZN_TRANSPORT:-http}
+export EXCHANGE_USER=${EXCHANGE_USER:-$(echo $HZN_EXCHANGE_USER_AUTH | awk -F ":" '{print $1}')}
+export EXCHANGE_USER_PASSWORD=${EXCHANGE_USER_PASSWORD:-$(echo $HZN_EXCHANGE_USER_AUTH | awk -F ":" '{print $2}')}
+export POSTGRES_IMAGE_TAG=${POSTGRES_IMAGE_TAG:-13}
+deviceBinaryDir='pri-fidoiot-v'$FIDO_DEVICE_ONBOARD_REL_VER
 rvHttpPort=${1:-80}
 rvHttpsPort=${2:-443} #Will change to 8041 when https is enabled
 DISTRO=${DISTRO:-$(. /etc/os-release 2>/dev/null;echo $ID $VERSION_ID)}
@@ -82,7 +86,7 @@ if [[ -f "$ownerPubKeyFile" ]]; then
 fi
 
 # These environment variables can be overridden
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_RELEASE_VERSION}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
 #useNativeClient=${FDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
 workingDir=fdo
 
@@ -208,20 +212,11 @@ isKernelOld() {
 
 #====================== Main Code ======================
 
-# Start a DB container for FDO's manufacturer services
-docker run -d \
-           -e "POSTGRES_DB=$FDO_MFG_DB" \
-           -e "POSTGRES_PASSWORD=$FDO_MFG_DB_PASSWORD" \
-           -e "POSTGRES_USER=$FDO_MFG_DB_USER" \
-           -e "POSTGRES_HOST_AUTH_METHOD=trust" \
-           --health-cmd="pg_isready -U $FDO_MFG_DB_USER" \
-           --health-interval=15s \
-           --health-retries=3 \
-           --health-timeout=5s \
-           --name postgres-fdo-mfg-service \
-           --network=hzn_horizonnet \
-           -p 0.0.0.0:5435:5432 \
-           postgres:13
+if [[ ${FDO_MFG_SVC_AUTH} != *"apiUser:"* || ${FDO_MFG_SVC_AUTH} == *$'\n'* || ${FDO_MFG_SVC_AUTH} == *'|'* ]]; then
+    # newlines and vertical bars aren't allowed in the pw, because they cause the sed cmds below to fail
+    echo "Error: FDO_MFG_SVC_AUTH must include 'apiUser:' as a prefix and not contain newlines or '|'"
+    exit 1
+fi
 
 # Our working directory is /fdo
 ensureWeAreRoot
@@ -288,6 +283,21 @@ if ! command -v docker >/dev/null 2>&1; then
     fi
 fi
 
+# Start a DB container for FDO's manufacturer services
+docker run -d \
+           -e "POSTGRES_DB=$FDO_MFG_DB" \
+           -e "POSTGRES_PASSWORD=$FDO_FDO_MFG_DB_PASSWORD" \
+           -e "POSTGRES_USER=$FDO_MFG_DB_USER" \
+           -e "POSTGRES_HOST_AUTH_METHOD=trust" \
+           --health-cmd="pg_isready -U $FDO_MFG_DB_USER" \
+           --health-interval=15s \
+           --health-retries=3 \
+           --health-timeout=5s \
+           --name postgres-fdo-mfg-service \
+           --network="$HZN_DOCK_NET" \
+           -p "$FDO_MFG_DB_PORT":5432 \
+           postgres:"$POSTGRES_IMAGE_TAG"
+
 
 # If docker-compose isn't installed, or isn't at least 1.29.2 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
 # For the dependency on 1.29.2 or greater, see: https://docs.docker.com/compose/release-notes/
@@ -340,17 +350,17 @@ sed -i -e "s/db_user=.*/db_user=$FDO_MFG_DB_USER/" $PWD/$deviceBinaryDir/owner/s
 sed -i -e "s/db_password=.*/db_password=$FDO_MFG_DB_PASSWORD/" $PWD/$deviceBinaryDir/owner/service.env
 
 # device/service.yml configuration to point to local manufacturing port
-sed -i -e 's/di-url:.*/di-url: http:\/\/localhost:8039/' $PWD/$deviceBinaryDir/device/service.yml
+sed -i -e 's/di-url:.*/di-url: '$HZN_TRANSPORT':\/\/'$HZN_LISTEN_IP':'$FDO_MFG_PORT'/' $PWD/$deviceBinaryDir/device/service.yml
 chk $? 'sed device/service.yml'
-#sed -i -e 's/user_name:.*/user_name: $(api_user)/' ./$deviceBinaryDir/manufacturer/service.yml
-#chk $? 'sed manufacturer/service.yml'
 
 # configure manufacturer/hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $PWD/$deviceBinaryDir/manufacturer/hibernate.cfg.xml
 chk $? 'sed manufacturer/hibernate.cfg.xml driver_class'
 
 # manufacturer/service.env
-sed -i -e 's/api_user=.*/api_user='$HZN_ORG_ID'\/'$EXCHANGE_USER'\napi_password='$EXCHANGE_USER_PASSWORD'/' $PWD/$deviceBinaryDir/manufacturer/service.env
+api_user=$(echo "$FDO_MFG_SVC_AUTH" | awk -F: '{print $1}')
+api_password=$(echo "$FDO_MFG_SVC_AUTH" | awk -F: '{print $2}')
+sed -i -e 's/api_user=.*/api_user="'$api_user'"\napi_password="'$api_password'"/' $PWD/$deviceBinaryDir/manufacturer/service.env
 chk $? 'sed manufacturer/service.env api_user'
 sed -i -e 's/db_user=.*/db_user="'$FDO_MFG_DB_USER'"/' $PWD/$deviceBinaryDir/manufacturer/service.env
 chk $? 'sed manufacturer/service.env db_user'
@@ -394,12 +404,12 @@ while [ $httpCode != 200 ]
 do
   echo -n "."
   sleep 2
-  httpCode=$(curl -I -s -w "%{http_code}" -o /dev/null --digest -u "$HZN_EXCHANGE_USER_AUTH" --location --request GET 'http://localhost:8039/health')
+  httpCode=$(curl -I -s -w "%{http_code}" -o /dev/null --digest -u "$FDO_MFG_SVC_AUTH" --location --request GET "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/health")
 done
 echo ""
 
 echo "setting rendezvous server location to ${FDO_RV_DNS}:${rvHttpPort}"
-response=$(curl -s -w "%{http_code}" -D - --digest -u "$HZN_EXCHANGE_USER_AUTH" --location --request POST 'http://localhost:8039/api/v1/rvinfo' --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,"'"${rvHttpPort}"'"],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,"'"${rvHttpsPort}"'"]]]')
+response=$(curl -s -w "%{http_code}" -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,"'"${rvHttpPort}"'"],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,"'"${rvHttpPort}"'"]]]')
 code=$?
 httpCode=$(tail -n1 <<< "$response")
 chkHttp $code $httpCode "setting rendezvous server location"
@@ -412,7 +422,7 @@ echo "beginning device initialization"
 cd ../../../ || exit 1
 
 echo "getting device info (alias, serial number, UUID)"
-response=$(curl -s -w "\\n%{http_code}" --digest -u "$HZN_EXCHANGE_USER_AUTH" --location --request GET 'http://localhost:8039/api/v1/deviceinfo/10000' --header 'Content-Type: text/plain')
+response=$(curl -s -w "\\n%{http_code}" --digest -u "$FDO_MFG_SVC_AUTH" --location --request GET "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/deviceinfo/10000" --header 'Content-Type: text/plain')
 code=$?
 httpCode=$(tail -n1 <<< "$response")
 chkHttp $code $httpCode "getting device info"
@@ -422,19 +432,19 @@ alias=$(echo $response | grep -o '"alias":"[^"]*' | grep -o '[^"]*$')
 echo "alias:$alias"
 
 echo "getting device public key"
-httpCode=$(curl -s -w "%{http_code}" -o public_key.pem -u $HZN_EXCHANGE_USER_AUTH --location "$HZN_FDO_SVC_URL/api/orgs/$HZN_ORG_ID/fdo/certificate/$alias")
+httpCode=$(curl -s -w "%{http_code}" -o public_key.pem -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" --location "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/certificate/$alias")
 chkHttp $? $httpCode "getting device public key"
 
 echo "getting ownership voucher"
-httpCode=$(curl -s -w "%{http_code}" --digest -u "$HZN_EXCHANGE_USER_AUTH" --location --request POST "http://localhost:8039/api/v1/mfg/vouchers/$serial" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt)
+httpCode=$(curl -s -w "%{http_code}" --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/mfg/vouchers/$serial" --header 'Content-Type: text/plain' --data-binary '@public_key.pem' -o owner_voucher.txt)
 chkHttp $? $httpCode "getting ownership voucher"
 
 #
-## Install systemd service that will run at boot time to complete the SDO process
+## Install systemd service that will run at boot time to complete the FDO process
 #cp fdo/fdo_to.service /lib/systemd/system
-#chk $? 'copying sdo_to.service to systemd'
-#systemctl enable sdo_to.service
-#chk $? 'enabling sdo_to.service'
-#echo "Systemd service sdo_to.service has been enabled"
-## After importing the voucher to sdo-owner-services, if you want to you can initiate the sdo boot process by running: systemctl start sdo_to.service &
-## And you can view the output with: journalctl -f --no-tail -u sdo_to.service
+#chk $? 'copying fdo_to.service to systemd'
+#systemctl enable fdo_to.service
+#chk $? 'enabling fdo_to.service'
+#echo "Systemd service fdo_to.service has been enabled"
+## After importing the voucher to fdo-owner-services, if you want to you can initiate the fdo boot process by running: systemctl start fdo_to.service &
+## And you can view the output with: journalctl -f --no-tail -u fdo_to.service
