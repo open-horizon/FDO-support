@@ -2,14 +2,14 @@
 
 ## Overview of the Open Horizon FDO Support
 
-Edge devices built with [Intel FDO](https://software.intel.com/en-us/secure-device-onboard) (FIDO Device Onboard) can be added to an Open Horizon instance by simply importing their associated ownership vouchers and then powering on the devices.
+Edge devices built with [FDO](https://github.com/fido-device-onboard) (FIDO Device Onboard) can be added to an Open Horizon instance by simply importing their associated ownership vouchers and then powering on the devices.
 
 The software in this git repository provides integration between FDO and Open Horizon, making it easy to use FDO-enabled edge devices with Horizon. The Horizon FDO support consists of these components:
 
 1. A docker image of of the FDO "Owner" service (those that run on the Horizon management hub).
-1. An `hzn fdo voucher` sub-command to import one or more ownership vouchers into Owner service. (An ownership voucher is a file that the device manufacturer gives to the purchaser (owner) along with the physical device.)
-1. A sample script called `start-mfg.sh` to start the development Manufacturing service so that the Ownership Voucher can be extended to the user to enable them to run through the FDO-enabling steps on a VM "device" that a device manufacturer would run on a physical device. This allows you to try out the FDO process with your Horizon instance before purchasing FDO-enabled devices.
-1. A REST API that authneticates users through the Exchange and enables importing and querying ownership vouchers.
+2. An `hzn fdo voucher` sub-command to import one or more ownership vouchers into Owner service. (An ownership voucher is a file that the device manufacturer gives to the purchaser (owner) along with the physical device.)
+3. A sample script called `start-mfg.sh` to start the development Manufacturing service so that the Ownership Voucher can be extended to the user to enable them to run through the FDO-enabling steps on a VM "device" that a device manufacturer would run on a physical device. This allows you to try out the FDO process with your Horizon instance before purchasing FDO-enabled devices.
+4. A REST API that authneticates users through the Exchange and enables importing and querying ownership vouchers.
 
 ## <a name="use-fdo"></a>Using the FDO Support
 
@@ -193,7 +193,6 @@ The ownership voucher created for the device in the previous step needs to be im
 
 All the following steps have been automated by the ocs-api to install the horizon agent on the target device. In this step you can also control what edge services should be run on the device, once it is booted and configured. To do this, you must:
 
-
 1. To0 will be automatically triggered, but if it has not been you can run the following call to initiate To0 of specific device guid from Owner Service.
 
    ```bash
@@ -339,7 +338,6 @@ sudo -i -u postgres psql
 DROP DATABASE fdo;
 ```
 
-
 #### <a name="troubleshooting"></a>Troubleshooting
 
 - If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.5/owner/app-data/service.log or use command `docker logs -f fdo-owner-service` for error messages.
@@ -362,20 +360,20 @@ These steps only need to be performed by developers of this project
 What to modify in our FDO support code when Intel releases a new version of FDO:
 
 - Update `.gitignore` and `.dockerignore`
-- `mv fdo fdo-<prev-version>`
-- `mkdir fdo`
+  - `mv fdo fdo-<prev-version>`
+  - `mkdir fdo`
 - Update `getFDO.sh` to download/unpack new version
 - If new major or minor version, make copy of README. If a fix pack, just update the version numbers within the README.
 - Search for previous version number in rest of repo. Should find hits to change in:
-    - `docker/start-fdo-owner-service.sh`
-    - `docker/Dockerfile`
-    - `docs/README.md`
-    - `start-mfg.sh`
+  - `docker/start-fdo-owner-service.sh`
+  - `docker/Dockerfile`
+  - `docs/README.md`
+  - `start-mfg.sh`
 
 - If new major or minor version:
-    - update `.gitignore`
-    - create a new release in https://github.com/open-horizon/FDO-support/releases/ , and upload all device-related files/scripts.
+  - update `.gitignore`
+  - create a new release in https://github.com/open-horizon/FDO-support/releases/ , and upload all device-related files/scripts.
 - If a fix pack:
-    - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/FDO-support/releases/
-    - Update the title and description to indicate the new fix pack version
+  - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/FDO-support/releases/
+  - Update the title and description to indicate the new fix pack version
 - When testing, copy new versions of scripts to the test machines

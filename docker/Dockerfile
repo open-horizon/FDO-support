@@ -30,7 +30,7 @@ ENV WORKDIR=/home/fdouser
 ENV FDO_OCS_DB_PATH=$WORKDIR/ocs/config/db
 # These env vars are only used at runtime (by start-fdo-owner-services.sh), so can be overridden by docker run
 # https://github.com/fido-device-onboard/release-fidoiot/releases
-ENV FDO_OPS_PORT=8042    FDO_OCS_SVC_PORT=9008    FIDO_DEVICE_ONBOARD_REL_VER=1.1.5    VERBOSE=true
+ENV FDO_OPS_PORT=8042    FDO_OCS_SVC_PORT=9008   VERBOSE=true
 ENV FDO_OPS_EXTERNAL_PORT=$FDO_OPS_PORT
 ENV FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_PORT
 
@@ -77,21 +77,24 @@ RUN useradd -r -u 1000 -g root fdouser \
 USER fdouser
 WORKDIR $WORKDIR
 
+ARG fido_device_onboard_rel_ver
+ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.5}
+
 # Get the license file
 COPY LICENSE.txt /licenses/
-COPY fdo/NOTICES-v$FIDO_DEVICE_ONBOARD_REL_VER/pri-fidoiot/* /licenses/FDOIotPlatformSDK/
+COPY fdo/NOTICES-v${FIDO_DEVICE_ONBOARD_REL_VER}/pri-fidoiot/* /licenses/FDOIotPlatformSDK/
 
 # Get owner db files. The owner subdir will be created automatically by COPY
 # Note: need to use uid and gid to be able to build on non-linux hosts
-COPY --chown=1000:0 fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/db $WORKDIR/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/db/
+COPY --chown=1000:0 fdo/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/db $WORKDIR/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/db/
 
 # Get owner service files. The owner subdir will be created automatically by COPY
 # Note: need to use uid and gid to be able to build on non-linux hosts
-COPY --chown=1000:0 fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/owner $WORKDIR/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/owner/
+COPY --chown=1000:0 fdo/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/owner $WORKDIR/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/owner/
 
 # Get script files. The owner subdir will be created automatically by COPY
 # Note: need to use uid and gid to be able to build on non-linux hosts
-COPY --chown=1000:0 fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/scripts $WORKDIR/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/scripts/
+COPY --chown=1000:0 fdo/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/scripts $WORKDIR/pri-fidoiot-v${FIDO_DEVICE_ONBOARD_REL_VER}/scripts/
 
 
 # Get OCS files

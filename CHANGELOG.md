@@ -2,11 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2023-06-06
+## [1.2.0] - 2023-06-14
 - Issue 29: Completed sample-mfg/start-mfg.sh bash script.
 - Converted swagger documentation to OpenAPI 3
 - README updates
-- Added `FIDO_DEVICE_ONBOARD_REL_VER` environment variable FDO Owner Service container and script.
+- Added `fido_device_onboard_rel_ver` argument variable FDO Owner Service container and script.
+- Makefile will now download needed FDO release resources from GitHub.
 
 ## [1.1.0] - 2023-05-24
 - Issue 25: Updated FDO to support Intel's `1.1.5` release.
