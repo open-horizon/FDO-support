@@ -6,7 +6,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
 Usage: ${0##*/} [<image-version>]
 Arguments:
-  <image-version>  The image tag to use. Defaults to '1.1.0'
+  <image-version>  The image tag to use. Defaults to '1.2.0'
 Required environment variables:
   HZN_MGMT_HUB_CERT: the base64 encoded content of the management hub cluster ingress self-signed certificate (can be set to 'N/A' if the mgmt hub does not require a cert). If set, this certificate is given to the edge nodes in the HZN_MGMT_HUB_CERT_PATH variable.
 
