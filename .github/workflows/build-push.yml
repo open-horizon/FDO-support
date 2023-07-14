@@ -10,6 +10,7 @@ on:
 # Variables available to all jobs
 env:
   DOCKER_REGISTRY: ${{ vars.DOCKERHUB_REPO }}
+  GITHUB_CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
   RUN_NUMBER: ${{ github.run_number }}
   RUN_NUMBER_OFFSET: ${{ vars.RUN_NUMBER_OFFSET }}
 
@@ -27,6 +28,29 @@ jobs:
 
     # Executed sequentially when job runs
     steps:
+      # Check and ensure that the repository has all the variables and secrets set
+      - name: Check User Set Variables
+        run: |
+          if [[ -z "$DOCKER_USER" ]]; then \
+          echo "::error::Secret DOCKER_USER was not set"; \
+          exit 1; \
+          fi
+          if [[ -z "$DOCKER_TOKEN" ]]; then \
+          echo "::error::Secret DOCKER_TOKEN was not set"; \
+          exit 1; \
+          fi
+          if [[ -z "$DOCKER_REGISTRY" ]]; then \
+          echo "::error::Variable DOCKERHUB_REPO was not set"; \
+          exit 1; \
+          fi
+          if [[ -z "$RUN_NUMBER_OFFSET" ]]; then \
+          echo "::error::Variable RUN_NUMBER_OFFSET was not set"; \
+          exit 1; \
+          fi
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
       # Offset our version build number to prevent collisions
       - name: Offset Build Number
         id: offset
@@ -36,10 +60,12 @@ jobs:
       # Upgrade Docker engine version, needed for building images.
       - name: Install Latest Docker Version
         run: |
+          sudo apt-get purge docker-ce docker-ce-cli containerd.io runc containerd moby-buildx moby-cli moby-compose moby-containerd moby-engine moby-runc
+
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
           sudo apt-get update
-          sudo apt-get install docker-ce
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       
       # Authenticate Dockerhub to allow pushing to our image repo
       - name: Login to Dockerhub
@@ -47,6 +73,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_TOKEN }}
+
+      # Authenticate GHCR to allow pushing to our alternate image registry
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Checkout our Github repo
       - name: Checkout Github Repo
@@ -80,10 +114,11 @@ jobs:
       # Push Docker Images to Dockerhub
       - name: Push Image to Dockerhub
         run: |
-          docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION}
           if [[ $GITHUB_REF == 'refs/heads/main' ]]; then \
           docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing && \
           docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing; \
+          docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing && \
+          docker push ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing; \
           fi
         env:
           VERSION: '${{ steps.config-version.outputs.VERSION }}-${{ steps.offset.outputs.BUILD_NUMBER }}'
