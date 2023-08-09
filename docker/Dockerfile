@@ -45,7 +45,7 @@ WORKDIR /root
 # Note: due to a bug in microdnf, using the --nodocs option causes an exit code of 141: https://github.com/rpm-software-management/microdnf/issues/50
 RUN mkdir -p /run/user/$UID && \
     microdnf update -y --nodocs 1>/dev/null 2>&1 && \
-    microdnf install -y --nodocs ca-certificates findutils gettext java-11-openjdk openssl procps shadow-utils tar 1>/dev/null 2>&1 && \
+    microdnf install -y --nodocs ca-certificates findutils gettext java-11-openjdk openssl procps shadow-utils tar && \
     microdnf clean all
 
 #RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
