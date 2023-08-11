@@ -13,6 +13,7 @@ env:
   GITHUB_CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
   RUN_NUMBER: ${{ github.run_number }}
   RUN_NUMBER_OFFSET: ${{ vars.RUN_NUMBER_OFFSET }}
+  GH_BRANCH: ${{ github.ref_name }} 
 
 # Jobs that will run when the workflow is triggered
 jobs:
@@ -107,6 +108,7 @@ jobs:
         run: |
           cd ${REPO_DIR}
           make clean
+          ./getFDO.sh
           make
         env:
           VERSION: '${{ steps.config-version.outputs.VERSION }}-${{ steps.offset.outputs.BUILD_NUMBER }}'
@@ -114,11 +116,14 @@ jobs:
       # Push Docker Images to Dockerhub
       - name: Push Image to Dockerhub
         run: |
-          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then \
-          docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing && \
-          docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing; \
-          docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing && \
-          docker push ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing; \
+          if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
+            docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
+            docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
+            docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
+            docker push ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
+          else
+            docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing_${GH_BRANCH}
+            docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing_${GH_BRANCH}
           fi
         env:
           VERSION: '${{ steps.config-version.outputs.VERSION }}-${{ steps.offset.outputs.BUILD_NUMBER }}'
