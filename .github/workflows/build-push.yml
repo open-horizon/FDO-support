@@ -20,7 +20,10 @@ env:
 jobs:
   # Build FDO-Support and pushes it to Dockerhub
   build-push:
-    runs-on: ubuntu-latest
+    # Prevent this action from running in forks
+    if: github.repository_owner == 'open-horizon'
+
+    runs-on: ubuntu-20.04
 
     # Environment variables available to all steps
     env:
