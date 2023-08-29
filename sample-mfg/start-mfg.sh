@@ -6,7 +6,7 @@
 #   - extend the Ownership Voucher to the owner (buyer)
 #   - Switch the device into owner mode
 
-# This script starts/uses the Manufacturer services. See the Intel FDO Manufacturer Enablement Guide
+# This script starts/uses the Manufacturer services. See the FDO Manufacturer Enablement Guide
 # These Manufacturer services are not for production use.
 
 # Supports Fedora 36+ and Ubuntu 2x.04

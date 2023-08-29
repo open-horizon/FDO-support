@@ -1,10 +1,10 @@
 FROM registry.access.redhat.com/ubi9-minimal:latest
 
 # Builds a composite docker service that the "owner" needs to run. Specifically it contains the following services:
-#   Intel FDO development/test rendezvous service
-#   Intel FDO to0scheduler service
-#   Intel FDO OPS (Owner Protocol Service)
-#   Intel FDO OCS (Owner Companion Service)
+#   FDO development/test rendezvous service
+#   FDO to0scheduler service
+#   FDO OPS (Owner Protocol Service)
+#   FDO OCS (Owner Companion Service)
 #   Open-horizon ocs-api (OCS REST API)
 
 # Building a UBI image:
