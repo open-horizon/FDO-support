@@ -14,7 +14,7 @@ chk() {
     exit $exitCode
 }
 
-echo "Retrieving Intel FDO Release 1.1.5 dependencies..."
+echo "Retrieving FDO Release 1.1.5 dependencies..."
 mkdir -p ${SCRIPT_LOCATION}/fdo && cd ${SCRIPT_LOCATION}/fdo
 chk $? 'making fdo dir'
 

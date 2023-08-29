@@ -55,7 +55,7 @@ The FDO owner service are packaged as a single docker container that can be run 
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
-Intel FIDO Device Onboard Rendezvous Servers:
+FIDO Device Onboard Rendezvous Servers:
 ```bash
  Development:
    http://test.fdorv.com:80
@@ -357,7 +357,7 @@ These steps only need to be performed by developers of this project
 
 ### <a name="new-fdo-version"></a>Checklist For Moving Up to a New FDO Version
 
-What to modify in our FDO support code when Intel releases a new version of FDO:
+What to modify in our FDO support code when the FDO project releases a new version of FDO:
 
 - Update `.gitignore` and `.dockerignore`
   - `mv fdo fdo-<prev-version>`
