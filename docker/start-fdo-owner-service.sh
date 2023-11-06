@@ -10,7 +10,7 @@ ocsDbDir="${1:-"ocs-db/"}"
 ocsApiPort="${2:-${SDO_OCS_API_TLS_PORT:-${SDO_OCS_API_PORT:-$ocsApiPortDefault}}}"  # precedence: arg, or tls port, or non-tls port, or default
 
 workingDir='/home/fdouser'
-FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.5} # https://github.com/fido-device-onboard/release-fidoiot/releases
+FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.6} # https://github.com/fido-device-onboard/release-fidoiot/releases
 deviceBinaryDir="pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER"
 # These can be passed in via CLI args or env vars
 tmp_pass=`head -c 15 /dev/random | base64`

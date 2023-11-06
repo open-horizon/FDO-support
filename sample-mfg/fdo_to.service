@@ -10,8 +10,8 @@ Before=user-sessions.service
 [Service]
 # For oneshot, systemd expects the command to NOT fork itself, and timeout is disabled by default
 Type=oneshot
-WorkingDirectory=/home/device/fdo/pri-fidoiot-v1.1.5/device
-ExecStart=/bin/java -jar /home/device/fdo/pri-fidoiot-v1.1.5/device/device.jar
+WorkingDirectory=/home/device/fdo/pri-fidoiot-v1.1.6/device
+ExecStart=/bin/java -jar /home/device/fdo/pri-fidoiot-v1.1.6/device/device.jar
 
 [Install]
 WantedBy=multi-user.target

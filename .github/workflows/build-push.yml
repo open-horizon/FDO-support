@@ -90,10 +90,10 @@ jobs:
           path: go/src/github.com/${{ github.repository }}
 
       # Prepare the environment
-      - name: Set up golang 1.19
+      - name: Set up golang 1.21
         uses: actions/setup-go@v2
         with:
-          go-version: '1.19'
+          go-version: '1.21'
           check-latest: true
 
       # Configure version variables for later steps, stored in our workflow env. variables

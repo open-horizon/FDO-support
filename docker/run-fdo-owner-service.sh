@@ -6,7 +6,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
 Usage: ${0##*/} [<image-version>]
 Arguments:
-  <image-version>  The image tag to use. Defaults to '1.2.0'
+  <image-version>  The image tag to use. Defaults to '1.3.0'
 Required environment variables:
   HZN_MGMT_HUB_CERT: the base64 encoded content of the management hub cluster ingress self-signed certificate (can be set to 'N/A' if the mgmt hub does not require a cert). If set, this certificate is given to the edge nodes in the HZN_MGMT_HUB_CERT_PATH variable.
 
@@ -49,7 +49,7 @@ generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:
 export CSS_PORT_EXTERNAL=${CSS_PORT_EXTERNAL:-9443}
 export EXCHANGE_INTERNAL_URL=${EXCHANGE_INTERNAL_URL:-http://exchange-api:8080/v1} # Internal docker network, for this container.
 export EXCHANGE_PORT_EXTERNAL=${EXCHANGE_PORT_EXTERNAL:-3090}
-export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.5}
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.6}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_OWN_SVC_PORT=${FDO_OWN_SVC_PORT:-8042}
 export FDO_OWN_DB=${FDO_OWN_DB:-fdo}
@@ -71,7 +71,7 @@ export HZN_MGMT_HUB_CERT=${HZN_MGMT_HUB_CERT:-$(cat ./agent-install.crt | base64
 export VERBOSE=${VERBOSE:-false}
 
 EXCHANGE_INTERNAL_CERT="${HZN_MGMT_HUB_CERT:-N/A}"
-VERSION="${1:-1.2.0}"
+VERSION="${1:-1.3.0}"
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-openhorizon}
 FDO_DOCKER_IMAGE=${FDO_DOCKER_IMAGE:-fdo-owner-services}
