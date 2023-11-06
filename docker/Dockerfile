@@ -45,7 +45,7 @@ WORKDIR /root
 # Note: due to a bug in microdnf, using the --nodocs option causes an exit code of 141: https://github.com/rpm-software-management/microdnf/issues/50
 RUN mkdir -p /run/user/$UID && \
     microdnf update -y --nodocs 1>/dev/null 2>&1 && \
-    microdnf install -y --nodocs ca-certificates findutils gettext java-11-openjdk openssl procps shadow-utils tar && \
+    microdnf install -y --nodocs ca-certificates findutils gettext java-17-openjdk openssl procps shadow-utils tar && \
     microdnf clean all
 
 #RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -78,11 +78,12 @@ USER fdouser
 WORKDIR $WORKDIR
 
 ARG fido_device_onboard_rel_ver
-ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.5}
+ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.6}
 
 # Get the license file
 COPY LICENSE.txt /licenses/
-COPY fdo/NOTICES-v${FIDO_DEVICE_ONBOARD_REL_VER}/pri-fidoiot/* /licenses/FDOIotPlatformSDK/
+#${FIDO_DEVICE_ONBOARD_REL_VER} 1.1.6 uses 1.1.5.
+COPY fdo/NOTICES-v1.1.5/pri-fidoiot/* /licenses/FDOIotPlatformSDK/
 
 # Get owner db files. The owner subdir will be created automatically by COPY
 # Note: need to use uid and gid to be able to build on non-linux hosts
