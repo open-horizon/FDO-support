@@ -39,6 +39,12 @@ fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz: fdo
 fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER): fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
 	tar -zxf fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz -C fdo
 
+fdo/third-party-components.tar.gz: fdo
+	wget -P fdo https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/third-party-components.tar.gz
+
+fdo/third-party-components: fdo/third-party-components.tar.gz
+	tar -zxf fdo/third-party-components.tar.gz -C fdo
+
 # Build the ocs rest api for linux for the FDO-owner-services container
 ocs-api/linux/ocs-api: ocs-api/*.go ocs-api/*/*.go Makefile
 	mkdir -p ocs-api/linux
@@ -53,7 +59,7 @@ run-ocs-api: ocs-api/ocs-api
 	tools/start-ocs-api.sh
 
 # Build the FDO services docker image - see the build environment requirements listed in docker/Dockerfile
-$(FDO_DOCKER_IMAGE): ocs-api/linux/ocs-api fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER)
+$(FDO_DOCKER_IMAGE): ocs-api/linux/ocs-api fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/third-party-components
 	- docker rm -f $(FDO_DOCKER_IMAGE) 2> /dev/null || :
 	docker build --build-arg="fido_device_onboard_rel_ver=$(FIDO_DEVICE_ONBOARD_REL_VER)" -t $(DOCKER_REGISTRY)/$@:$(VERSION) $(FDO_IMAGE_LABELS) $(DOCKER_OPTS) -f docker/Dockerfile .
 

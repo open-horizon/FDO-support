@@ -23,18 +23,19 @@ Required Environment Variables:
   HZN_EXCHANGE_USER_AUTH: Exchange user's username and password.
 
 Optional Environment Variables:
-  FDO_MFG_DB: Database name for FDO's manufacturing services
-  FDO_MFG_DB_URL: Database path and protocol
-  FDO_MFG_DB_PASSWORD: Database user's password
-  FDO_MFG_DB_USER: Database user
-  FDO_RV_URL: Usually the development RV server running with the owner services. To use the production RV service, set to http://fdorv.com
+  FDO_MFG_DB:             Database name for FDO's manufacturing services
+  FDO_MFG_DB_URL:         Database path and protocol
+  FDO_MFG_DB_PASSWORD:    Database user's password
+  FDO_MFG_DB_SSL:         Database connection SSL toggle
+  FDO_MFG_DB_USER:        Database user
+  FDO_RV_URL:             Usually the development RV server running with the owner services. To use the production RV service, set to http://fdorv.com
   HZN_EXCHANGE_USER_AUTH: API password for service APIs
-  HZN_FDO_SVC_URL: Owner Service url.
-  HZN_LISTEN_IP: External address of Open Horizon's Management Hub.
-  HZN_ORG_ID: Exchange user's organization
-  HZN_TRANSPORT: http or https. Only http is currently supported.
-  rvHttpPort: Rendezvous server http port. If no http present, then set this as the https port
-  rvHttpsPort: Rendezvous server https port
+  HZN_FDO_SVC_URL:        Owner Service url.
+  HZN_LISTEN_IP:          External address of Open Horizon's Management Hub.
+  HZN_ORG_ID:             Exchange user's organization
+  HZN_TRANSPORT:          http or https. Only http is currently supported.
+  rvHttpPort:             Rendezvous server http port. If no http present, then set this as the https port
+  rvHttpsPort:            Rendezvous server https port
 
 
 ${0##*/} must be run in a directory where it has access to create a few files and directories.
@@ -55,6 +56,7 @@ generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:
 export FDO_MFG_DB=${FDO_MFG_DB:-fdo_mfg}
 export FDO_MFG_DB_PASSWORD=${FDO_MFG_DB_PASSWORD:-$(generateToken 15)}
 export FDO_MFG_DB_PORT=${FDO_MFG_DB_PORT:-5434}
+export FDO_MFG_DB_SSL=${FDO_MFG_DB_SSL:-false}
 export FDO_MFG_DB_URL=${FDO_MFG_DB_URL:-jdbc:postgresql://postgres-fdo-mfg-service:5432/$FDO_MFG_DB}
 export FDO_MFG_DB_USER=${FDO_MFG_DB_USER:-fdouser}
 export FDO_MFG_PORT=${FDO_MFG_PORT:-8039}
@@ -245,14 +247,14 @@ confirmcmds grep curl ping   # these should be in the minimal ubuntu
 
 
 # If java 11 isn't installed, do that
-if java -version 2>&1 | grep version | grep -q '1[1-7]\.'; then
-  echo "Found java 11"
+if java -version 2>&1 | grep version | grep -q '1[7-7]\.'; then
+  echo "Found java 17"
 else
-  echo "Java 11 not found, installing it..."
+  echo "Java 17 not found, installing it..."
   if isUbuntu2x; then
-    apt-get update && apt-get install -y openjdk-11-jre-headless
+    apt-get update && apt-get install -y openjdk-17-jre-headless
   elif isFedora; then
-    dnf install -y java-11-openjdk
+    dnf install -y java-17-openjdk
   else
     echo "Unsupported distribution, exiting" && exit 1
   fi
@@ -348,6 +350,7 @@ cd ../../ || exit
 # override auto-generated DB username and password with variables
 sed -i -e "s/db_user=.*/db_user=$FDO_MFG_DB_USER/" $PWD/$deviceBinaryDir/owner/service.env
 sed -i -e "s/db_password=.*/db_password=$FDO_MFG_DB_PASSWORD/" $PWD/$deviceBinaryDir/owner/service.env
+sed -i -e "s/useSSL=.*/useSSL=$FDO_MFG_DB_SSL/" $PWD/$deviceBinaryDir/owner/service.env
 
 # device/service.yml configuration to point to local manufacturing port
 sed -i -e 's/di-url:.*/di-url: '$HZN_TRANSPORT':\/\/'$HZN_LISTEN_IP':'$FDO_MFG_PORT'/' $PWD/$deviceBinaryDir/device/service.yml

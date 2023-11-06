@@ -25,6 +25,7 @@ Optional environment variables (that do not usually need to be set):
   FDO_OWN_DB:                 Database name for the FDO Owner Service's database.
   FDO_OWN_DB_PASSWORD:        Database user's password for the FDO Owner Service's database. Default is generated.
   FDO_OWN_DB_PORT:            Docker external port number for the FDO Owner Service's database.
+  FDO_OWN_DB_SSL:             Database connection SSL toggle. Default is false.
   FDO_OWN_DB_USER:            Database username for the FDO Owner Service's database.
   FDO_OWN_SVC_AUTH:           FDO Owner Service API credentials. Default is generated. Format: apiUser:<password>
   FDO_OWN_SVC_CERT_PATH:      Path that the directory holding the certificate and key files is mounted to within the container. Default is /home/sdouser/ocs-api-dir/keys .
@@ -54,7 +55,8 @@ export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_OWN_SVC_PORT=${FDO_OWN_SVC_PORT:-8042}
 export FDO_OWN_DB=${FDO_OWN_DB:-fdo}
 export FDO_OWN_DB_PASSWORD=${FDO_OWN_DB_PASSWORD:-$(generateToken 15)}
-export FDO_OWN_DB_PORT=${FDO_OWN_DB_PORT:5433}
+export FDO_OWN_DB_PORT=${FDO_OWN_DB_PORT:-5433}
+export FDO_OWN_DB_SSL=${FDO_OWN_DB_SSL:-false}
 export FDO_OWN_DB_USER=${FDO_OWN_DB_USER:-fdouser}
 export FDO_OWN_SVC_AUTH=${FDO_OWN_SVC_AUTH:-apiUser:$(generateToken 15)}
 export FDO_DB_URL=${FDO_DB_URL:-jdbc:postgresql://postgres-fdo-owner-service:5432/$FDO_OWN_DB}
@@ -139,6 +141,7 @@ docker run -d \
 docker run -d \
            -e "FDO_DB_PASSWORD=$FDO_OWN_DB_PASSWORD" \
            -e "FDO_OPS_SVC_HOST=$HZN_LISTEN_IP:$FDO_OWN_SVC_PORT" \
+           -e "FDO_DB_SSL=$FDO_OWN_DB_SSL" \
            -e "FDO_DB_USER=$FDO_OWN_DB_USER" \
            -e "FDO_DB_URL=$FDO_DB_URL" \
            -e "HZN_FDO_API_URL=$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_SVC_PORT" \
