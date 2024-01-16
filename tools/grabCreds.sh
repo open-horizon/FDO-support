@@ -7,7 +7,7 @@ grabCreds() {
     for i in ${components[@]}; do
         if [[ "${components[@]}" =~ "$i" ]]; then
 
-            keypwd="$(grep -E '^ *api_password=' fdo/pri-fidoiot-v1.1.6/$i/service.env)"
+            keypwd="$(grep -E '^ *api_password=' fdo/pri-fidoiot-v1.1.7/$i/service.env)"
             API_PWD=${keypwd#api_password=}
            
 	    echo export "$i"=$API_PWD

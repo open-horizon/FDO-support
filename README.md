@@ -28,7 +28,7 @@ The FDO owner service are packaged as a single docker container that can be run 
    # An all-in-1 environment example:
    export HZN_EXCHANGE_USER_AUTH=admin:password  # <identity>:<password>
    export HZN_ORG_ID=myorg  # <organization>
-   export FIDO_DEVICE_ONBOARD_REl_VER=1.1.6 # https://github.com/fido-device-onboard/release-fidoiot/releases
+   export FIDO_DEVICE_ONBOARD_REL_VER=1.1.7 # https://github.com/fido-device-onboard/release-fidoiot/releases
    export VERBOSE=true # optional, for debug
    ```
 
@@ -47,7 +47,7 @@ The FDO owner service are packaged as a single docker container that can be run 
 5. Start the FDO owner service docker container and view the log:
 
    ```bash
-   ./docker/run-fdo-owner-service.sh 1.3.0
+   ./docker/run-fdo-owner-service.sh 1.4.0
    docker logs -f fdo-owner-service
    ```
 
@@ -115,7 +115,7 @@ The sample script called `start-mfg.sh` downloads and extracts all necessary com
  ```bash
 curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-mfg/start-mfg.sh
 chmod +x start-mfg.sh
-export FIDO_DEVICE_ONBOARD_REL_VER=1.1.6 # https://github.com/fido-device-onboard/release-fidoiot/releases
+export FIDO_DEVICE_ONBOARD_REL_VER=1.1.7 # https://github.com/fido-device-onboard/release-fidoiot/releases
 export FDO_MFG_SVC_AUTH=apiUser:password # apiUser:<password>
 export FDO_MFG_PORT=8039
 export FDO_OWN_COMP_SVC_PORT=9008
@@ -143,7 +143,7 @@ All the following steps interacting with localhost:8039 are automated by the `./
 2. On your VM to be initialized, go to the device directory and run the following command to initialize your VM "Device":
 
    ```bash
-   cd "fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REl_VER/device"
+   cd "fdo/pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER/device"
    java -jar device.jar
    ```
    The response should end with
@@ -340,7 +340,7 @@ DROP DATABASE fdo;
 
 #### <a name="troubleshooting"></a>Troubleshooting
 
-- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.6/owner/app-data/service.log or use command `docker logs -f fdo-owner-service` for error messages.
+- If the edge device does not give a `[INFO ] TO2 completed successfully. [INFO ] Starting Fdo Completed`, check /fdo/pri-fidoiot-v1.1.7/owner/app-data/service.log or use command `docker logs -f fdo-owner-service` for error messages.
 - If your Owner, RV or Manufacturer service does not respond, you can check the logs in the same location as above. If the logs never printed that it started the service, for example: "Started Owner Service", then make sure you have all dependencies installed and environment variables correctly exported.
 - If your Service Info Package fails during the process of getting onboarded to the edge device, make sure you posted the file correctly to the owner service DB. Also make sure that you posted the correct To2 address.
 

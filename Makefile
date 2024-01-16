@@ -1,9 +1,9 @@
 SHELL ?= /bin/bash -e
 # Set this before building the ocs-api binary and FDO-owner-services (for now they use the samme version number)
-export VERSION ?= 1.3.0
-export FIDO_DEVICE_ONBOARD_REL_VER ?= 1.1.6
+export VERSION ?= 1.4.0
+export FIDO_DEVICE_ONBOARD_REL_VER ?= 1.1.7
 # used by sample-mfg/Makefile. Needs to match what is in fdo/supply-chain-tools-v<version>/docker_manufacturer/docker-compose.yml
-STABLE_VERSION ?= 1.3.0
+STABLE_VERSION ?= 1.4.0
 
 #todo: add BUILD_NUMBER like in anax/Makefile
 
@@ -45,6 +45,12 @@ fdo/third-party-components.tar.gz: fdo
 fdo/third-party-components: fdo/third-party-components.tar.gz
 	tar -zxf fdo/third-party-components.tar.gz -C fdo
 
+fdo/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz: fdo
+	wget -P fdo https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
+
+fdo/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER): fdo/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
+	tar -zxf fdo/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz -C fdo
+
 # Build the ocs rest api for linux for the FDO-owner-services container
 ocs-api/linux/ocs-api: ocs-api/*.go ocs-api/*/*.go Makefile
 	mkdir -p ocs-api/linux
@@ -59,7 +65,7 @@ run-ocs-api: ocs-api/ocs-api
 	tools/start-ocs-api.sh
 
 # Build the FDO services docker image - see the build environment requirements listed in docker/Dockerfile
-$(FDO_DOCKER_IMAGE): ocs-api/linux/ocs-api fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/third-party-components
+$(FDO_DOCKER_IMAGE): ocs-api/linux/ocs-api fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER) fdo/third-party-components fdo/client-sdk-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER)
 	- docker rm -f $(FDO_DOCKER_IMAGE) 2> /dev/null || :
 	docker build --build-arg="fido_device_onboard_rel_ver=$(FIDO_DEVICE_ONBOARD_REL_VER)" -t $(DOCKER_REGISTRY)/$@:$(VERSION) $(FDO_IMAGE_LABELS) $(DOCKER_OPTS) -f docker/Dockerfile .
 

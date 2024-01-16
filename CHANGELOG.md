@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.4.0] - 2024-01.16
+- Issue 51: Updated to support FDO `1.1.7` release.
+- Removed unneeded getFDO.sh script which was duplicated by the Makefile.
+
 ## [1.3.0] - 2023-11.06
 - Issue 48: Updated FDO to support FDO Project's `1.1.6` release.
 - Updated Golang to version `1.21.3`.
