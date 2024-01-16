@@ -3,6 +3,7 @@ name: build-push
 
 # This workflow triggers on any push (or merge) to the listed branch(es)
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -108,7 +109,6 @@ jobs:
         run: |
           cd ${REPO_DIR}
           make clean
-          ./getFDO.sh
           make
         env:
           VERSION: '${{ steps.config-version.outputs.VERSION }}-${{ steps.offset.outputs.BUILD_NUMBER }}'
