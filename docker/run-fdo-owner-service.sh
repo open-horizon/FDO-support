@@ -6,7 +6,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
 Usage: ${0##*/} [<image-version>]
 Arguments:
-  <image-version>  The image tag to use. Defaults to '1.2.0'
+  <image-version>  The image tag to use. Defaults to '1.4.0'
 Required environment variables:
   HZN_MGMT_HUB_CERT: the base64 encoded content of the management hub cluster ingress self-signed certificate (can be set to 'N/A' if the mgmt hub does not require a cert). If set, this certificate is given to the edge nodes in the HZN_MGMT_HUB_CERT_PATH variable.
 
@@ -25,6 +25,7 @@ Optional environment variables (that do not usually need to be set):
   FDO_OWN_DB:                 Database name for the FDO Owner Service's database.
   FDO_OWN_DB_PASSWORD:        Database user's password for the FDO Owner Service's database. Default is generated.
   FDO_OWN_DB_PORT:            Docker external port number for the FDO Owner Service's database.
+  FDO_OWN_DB_SSL:             Database connection SSL toggle. Default is false.
   FDO_OWN_DB_USER:            Database username for the FDO Owner Service's database.
   FDO_OWN_SVC_AUTH:           FDO Owner Service API credentials. Default is generated. Format: apiUser:<password>
   FDO_OWN_SVC_CERT_PATH:      Path that the directory holding the certificate and key files is mounted to within the container. Default is /home/sdouser/ocs-api-dir/keys .
@@ -49,12 +50,13 @@ generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:
 export CSS_PORT_EXTERNAL=${CSS_PORT_EXTERNAL:-9443}
 export EXCHANGE_INTERNAL_URL=${EXCHANGE_INTERNAL_URL:-http://exchange-api:8080/v1} # Internal docker network, for this container.
 export EXCHANGE_PORT_EXTERNAL=${EXCHANGE_PORT_EXTERNAL:-3090}
-export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.5}
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.7}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_OWN_SVC_PORT=${FDO_OWN_SVC_PORT:-8042}
 export FDO_OWN_DB=${FDO_OWN_DB:-fdo}
 export FDO_OWN_DB_PASSWORD=${FDO_OWN_DB_PASSWORD:-$(generateToken 15)}
-export FDO_OWN_DB_PORT=${FDO_OWN_DB_PORT:5433}
+export FDO_OWN_DB_PORT=${FDO_OWN_DB_PORT:-5433}
+export FDO_OWN_DB_SSL=${FDO_OWN_DB_SSL:-false}
 export FDO_OWN_DB_USER=${FDO_OWN_DB_USER:-fdouser}
 export FDO_OWN_SVC_AUTH=${FDO_OWN_SVC_AUTH:-apiUser:$(generateToken 15)}
 export FDO_DB_URL=${FDO_DB_URL:-jdbc:postgresql://postgres-fdo-owner-service:5432/$FDO_OWN_DB}
@@ -71,7 +73,7 @@ export HZN_MGMT_HUB_CERT=${HZN_MGMT_HUB_CERT:-$(cat ./agent-install.crt | base64
 export VERBOSE=${VERBOSE:-false}
 
 EXCHANGE_INTERNAL_CERT="${HZN_MGMT_HUB_CERT:-N/A}"
-VERSION="${1:-1.2.0}"
+VERSION="${1:-1.4.0}"
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-openhorizon}
 FDO_DOCKER_IMAGE=${FDO_DOCKER_IMAGE:-fdo-owner-services}
@@ -139,6 +141,7 @@ docker run -d \
 docker run -d \
            -e "FDO_DB_PASSWORD=$FDO_OWN_DB_PASSWORD" \
            -e "FDO_OPS_SVC_HOST=$HZN_LISTEN_IP:$FDO_OWN_SVC_PORT" \
+           -e "FDO_DB_SSL=$FDO_OWN_DB_SSL" \
            -e "FDO_DB_USER=$FDO_OWN_DB_USER" \
            -e "FDO_DB_URL=$FDO_DB_URL" \
            -e "HZN_FDO_API_URL=$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_SVC_PORT" \

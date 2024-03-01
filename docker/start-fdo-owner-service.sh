@@ -10,7 +10,7 @@ ocsDbDir="${1:-"ocs-db/"}"
 ocsApiPort="${2:-${SDO_OCS_API_TLS_PORT:-${SDO_OCS_API_PORT:-$ocsApiPortDefault}}}"  # precedence: arg, or tls port, or non-tls port, or default
 
 workingDir='/home/fdouser'
-FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.5} # https://github.com/fido-device-onboard/release-fidoiot/releases
+FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.7} # https://github.com/fido-device-onboard/release-fidoiot/releases
 deviceBinaryDir="pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER"
 # These can be passed in via CLI args or env vars
 tmp_pass=`head -c 15 /dev/random | base64`
@@ -21,6 +21,7 @@ ownerPort=${HZN_FDO_SVC_URL:-$ownerPortDefault}
 ownerExternalPort=${FDO_OWNER_EXTERNAL_PORT:-$ownerPort}
 FDO_DB_USER=${FDO_DB_USER:-}
 FDO_DB_PASSWORD=${FDO_DB_PASSWORD:-}
+FDO_DB_SSL=${FDO_DB_SSL:-false}
 HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$HZN_LISTEN_IP:$ownerApiPort"}
 FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://postgres-fdo-owner-service:5432/fdo"}
@@ -125,6 +126,7 @@ done
 #override auto-generated DB username and password with variables
 sed -i -e "s/db_user=.*/db_user=$FDO_DB_USER/" $workingDir/$deviceBinaryDir/owner/service.env
 sed -i -e "s/db_password=.*/db_password=$FDO_DB_PASSWORD/" $workingDir/$deviceBinaryDir/owner/service.env
+sed -i -e "s/useSSL=.*/useSSL=$FDO_DB_SSL/" $workingDir/$deviceBinaryDir/owner/service.env
 
 ##configure hibernate.cfg.xml to use PostgreSQL database
 sed -i -e 's/org.mariadb.jdbc.Driver/org.postgresql.Driver/' $workingDir/$deviceBinaryDir/owner/hibernate.cfg.xml
@@ -153,13 +155,13 @@ sed -i -e '/- db_password/ s/./#&/' $workingDir/$deviceBinaryDir/owner/service.y
 chk $? 'sed owner/service.yml db_password'
 
 #need java installed in order to generate the SSL keystore for HTTPS
-# If java 11 isn't installed, do that
-if java -version 2>&1 | grep version | grep -q 11.; then
-    echo "Found java 11"
+# If java 17 isn't installed, do that
+if java -version 2>&1 | grep version | grep -q 17.; then
+    echo "Found java 17"
 else
-    echo "Java 11 not found, installing it..."
-    apt-get update && apt-get install -y openjdk-11-jre-headless
-    chk $? 'installing java 11'
+    echo "Java 17 not found, installing it..."
+    apt-get update && apt-get install -y openjdk-17-jre-headless
+    chk $? 'installing java 17'
 fi
 
 #    echo "Using local testing configuration, because FDO_DEV=$FDO_DEV"
