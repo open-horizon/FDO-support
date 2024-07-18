@@ -1,7 +1,7 @@
 SHELL ?= /bin/bash -e
 # Set this before building the ocs-api binary and FDO-owner-services (for now they use the samme version number)
 export VERSION ?= 1.4.0
-export FIDO_DEVICE_ONBOARD_REL_VER ?= 1.1.7
+export FIDO_DEVICE_ONBOARD_REL_VER ?= 1.1.9
 # used by sample-mfg/Makefile. Needs to match what is in fdo/supply-chain-tools-v<version>/docker_manufacturer/docker-compose.yml
 STABLE_VERSION ?= 1.4.0
 
