@@ -50,7 +50,7 @@ generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:
 export CSS_PORT_EXTERNAL=${CSS_PORT_EXTERNAL:-9443}
 export EXCHANGE_INTERNAL_URL=${EXCHANGE_INTERNAL_URL:-http://exchange-api:8080/v1} # Internal docker network, for this container.
 export EXCHANGE_PORT_EXTERNAL=${EXCHANGE_PORT_EXTERNAL:-3090}
-export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.7}
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_OWN_SVC_PORT=${FDO_OWN_SVC_PORT:-8042}
 export FDO_OWN_DB=${FDO_OWN_DB:-fdo}
