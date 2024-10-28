@@ -54,12 +54,13 @@ export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_OWN_SVC_PORT=${FDO_OWN_SVC_PORT:-8042}
 export FDO_OWN_DB=${FDO_OWN_DB:-fdo}
-export FDO_OWN_DB_PASSWORD=${FDO_OWN_DB_PASSWORD:-$(generateToken 15)}
+export FDO_OWN_DB_PASSWORD=${FDO_OWN_DB_PASSWORD:-$(generateToken 30)}
 export FDO_OWN_DB_PORT=${FDO_OWN_DB_PORT:-5433}
 export FDO_OWN_DB_SSL=${FDO_OWN_DB_SSL:-false}
 export FDO_OWN_DB_USER=${FDO_OWN_DB_USER:-fdouser}
-export FDO_OWN_SVC_AUTH=${FDO_OWN_SVC_AUTH:-apiUser:$(generateToken 15)}
+export FDO_OWN_SVC_AUTH=${FDO_OWN_SVC_AUTH:-apiUser:$(generateToken 30)}
 export FDO_DB_URL=${FDO_DB_URL:-jdbc:postgresql://postgres-fdo-owner-service:5432/$FDO_OWN_DB}
+export POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}
 export POSTGRES_IMAGE_TAG=${POSTGRES_IMAGE_TAG:-13}
 
 
@@ -124,7 +125,8 @@ docker run -d \
            -e "POSTGRES_DB=$FDO_OWN_DB" \
            -e "POSTGRES_PASSWORD=$FDO_OWN_DB_PASSWORD" \
            -e "POSTGRES_USER=$FDO_OWN_DB_USER" \
-           -e "POSTGRES_HOST_AUTH_METHOD=trust" \
+           -e "POSTGRES_HOST_AUTH_METHOD=$POSTGRES_HOST_AUTH_METHOD" \
+           -e "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256" \
            --health-cmd="pg_isready -U $FDO_OWN_DB_USER" \
            --health-interval=15s \
            --health-retries=3 \

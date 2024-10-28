@@ -1,6 +1,7 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
 ## [1.4.0] - 2024-01.16
 - Issue 51: Updated to support FDO `1.1.7` release.
 - Removed unneeded getFDO.sh script which was duplicated by the Makefile.
