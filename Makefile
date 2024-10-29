@@ -9,7 +9,7 @@ STABLE_VERSION ?= 1.4.0
 
 export DOCKER_REGISTRY ?= openhorizon
 export FDO_DOCKER_IMAGE ?= fdo-owner-services
-FDO_IMAGE_LABELS ?= --label "vendor=IBM" --label "name=$(FDO_DOCKER_IMAGE)" --label "version=$(VERSION)" --label "release=$(shell git rev-parse --short HEAD)" --label "summary=Open Horizon FDO support image" --label "description=The FDO owner services run in the context of the open-horizon management hub"
+FDO_IMAGE_LABELS ?= --label "vendor=Open Horizon" --label "name=$(FDO_DOCKER_IMAGE)" --label "version=$(VERSION)" --label "release=$(shell git rev-parse --short HEAD)" --label "summary=Open Horizon FDO support image" --label "description=The FDO owner services run in the context of the open-horizon management hub"
 # This doesn't work. According to https://docs.docker.com/engine/reference/builder/#label it is not necessary to put all of the labels in a single image layer
 #FDO_IMAGE_LABELS ?= --label 'vendor=IBM name=$(FDO_DOCKER_IMAGE) version=$(VERSION) release=$(shell git rev-parse --short HEAD) summary="Open Horizon FDO support image" description="The FDO owner services run in the context of the open-horizon management hub"'
 

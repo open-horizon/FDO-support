@@ -54,13 +54,13 @@ generateToken() { head -c 1024 /dev/urandom | base64 | tr -cd "[:alpha:][:digit:
 
 
 export FDO_MFG_DB=${FDO_MFG_DB:-fdo_mfg}
-export FDO_MFG_DB_PASSWORD=${FDO_MFG_DB_PASSWORD:-$(generateToken 15)}
+export FDO_MFG_DB_PASSWORD=${FDO_MFG_DB_PASSWORD:-$(generateToken 30)}
 export FDO_MFG_DB_PORT=${FDO_MFG_DB_PORT:-5434}
 export FDO_MFG_DB_SSL=${FDO_MFG_DB_SSL:-false}
 export FDO_MFG_DB_URL=${FDO_MFG_DB_URL:-jdbc:postgresql://postgres-fdo-mfg-service:5432/$FDO_MFG_DB}
 export FDO_MFG_DB_USER=${FDO_MFG_DB_USER:-fdouser}
 export FDO_MFG_PORT=${FDO_MFG_PORT:-8039}
-export FDO_MFG_SVC_AUTH=${FDO_MFG_SVC_AUTH:-apiUser:$(generateToken 15)}
+export FDO_MFG_SVC_AUTH=${FDO_MFG_SVC_AUTH:-apiUser:$(generateToken 30)}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_RV_URL=${FDO_RV_URL:-http://fdorv.com} # set to the production domain by default. Development domain is Owner's service public key protected as of v1.1.6.
 export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9} # https://github.com/fido-device-onboard/release-fidoiot/releases
@@ -72,6 +72,7 @@ export HZN_ORG_ID=${HZN_ORG_ID:-myorg} # Default to organization admin provided 
 export HZN_TRANSPORT=${HZN_TRANSPORT:-http}
 export EXCHANGE_USER=${EXCHANGE_USER:-$(echo $HZN_EXCHANGE_USER_AUTH | awk -F ":" '{print $1}')}
 export EXCHANGE_USER_PASSWORD=${EXCHANGE_USER_PASSWORD:-$(echo $HZN_EXCHANGE_USER_AUTH | awk -F ":" '{print $2}')}
+export POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}
 export POSTGRES_IMAGE_TAG=${POSTGRES_IMAGE_TAG:-13}
 deviceBinaryDir='pri-fidoiot-v'$FIDO_DEVICE_ONBOARD_REL_VER
 rvHttpPort=${1:-80}
@@ -290,7 +291,8 @@ docker run -d \
            -e "POSTGRES_DB=$FDO_MFG_DB" \
            -e "POSTGRES_PASSWORD=$FDO_FDO_MFG_DB_PASSWORD" \
            -e "POSTGRES_USER=$FDO_MFG_DB_USER" \
-           -e "POSTGRES_HOST_AUTH_METHOD=trust" \
+           -e "POSTGRES_HOST_AUTH_METHOD=$POSTGRES_HOST_AUTH_METHOD" \
+           -e "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256" \
            --health-cmd="pg_isready -U $FDO_MFG_DB_USER" \
            --health-interval=15s \
            --health-retries=3 \
