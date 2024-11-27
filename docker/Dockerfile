@@ -46,6 +46,7 @@ WORKDIR /root
 RUN mkdir -p /run/user/$UID && \
     microdnf update -y --nodocs 1>/dev/null 2>&1 && \
     microdnf install -y --nodocs ca-certificates findutils gettext java-17-openjdk openssl procps shadow-utils tar && \
+    microdnf upgrade -y --nodocs 1>/dev/nulk 2>&1 && \
     microdnf clean all
 
 #RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
