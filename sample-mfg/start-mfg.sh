@@ -289,7 +289,7 @@ fi
 # Start a DB container for FDO's manufacturer services
 docker run -d \
            -e "POSTGRES_DB=$FDO_MFG_DB" \
-           -e "POSTGRES_PASSWORD=$FDO_FDO_MFG_DB_PASSWORD" \
+           -e "POSTGRES_PASSWORD=$FDO_MFG_DB_PASSWORD" \
            -e "POSTGRES_USER=$FDO_MFG_DB_USER" \
            -e "POSTGRES_HOST_AUTH_METHOD=$POSTGRES_HOST_AUTH_METHOD" \
            -e "POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256" \
