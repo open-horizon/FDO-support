@@ -60,15 +60,18 @@ func main() {
 	outils.SetVerbose()
 	ExchangeInternalRetries = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_RETRIES", 12) // by default a total of 1 minute of trying
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
-
+	absOcsDbDir, err := filepath.Abs(OcsDbDir)
+	if err != nil {
+		outils.Fatal(3, "could not create directory %s", OcsDbDir, err)
+	}
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
-	if err := os.MkdirAll(filepath.Join(filepath.Abs(OcsDbDir),"/v1/devices"), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(absOcsDbDir,"/v1/devices"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/devices", err)
 	}
-	if err := os.MkdirAll(filepath.Join(OcsDbDir,"/v1/values"), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(absOcsDbDir,"/v1/values"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/values", err)
 	}
-	if err := os.MkdirAll(filepath.Join(OcsDbDir,"/v1/creds/publicKeys"), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(absOcsDbDir,"/v1/creds/publicKeys"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/creds/publicKeys", err)
 	}
 
