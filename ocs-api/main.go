@@ -62,13 +62,13 @@ func main() {
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
 
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
-	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Clean(OcsDbDir+"/v1/devices"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/devices", err)
 	}
-	if err := os.MkdirAll(OcsDbDir+"/v1/values", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Clean(OcsDbDir+"/v1/values"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/values", err)
 	}
-	if err := os.MkdirAll(OcsDbDir+"/v1/creds/publicKeys", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Clean(OcsDbDir+"/v1/creds/publicKeys"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/creds/publicKeys", err)
 	}
 
@@ -82,8 +82,8 @@ func main() {
 	http.HandleFunc("/api/", apiHandler)
 
 	// Set To2 Address on start up in FDO Owner Services
-    fdoTo2Host, fdoTo2Port := outils.GetTo2OwnerHost()
-    fmt.Println("Setting To2 Address as: " + fdoTo2Host + ":" + fdoTo2Port)
+	fdoTo2Host, fdoTo2Port := outils.GetTo2OwnerHost()
+	fmt.Println("Setting To2 Address as: " + fdoTo2Host + ":" + fdoTo2Port)
 	fdoOwnerURL := os.Getenv("HZN_FDO_API_URL")
 	if fdoOwnerURL == "" {
 		log.Fatalln("HZN_FDO_API_URL is not set")
@@ -111,7 +111,7 @@ func main() {
 	valuesDir := OcsDbDir + "/v1/values"
 	fileName := valuesDir + "/agent-install.crt"
 	fmt.Println("Posting agent-install.crt package: " + fileName)
-	certFile, err := ioutil.ReadFile(fileName)
+	certFile, err := os.ReadFile(filepath.Clean(filepath.Clean(fileName)))
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -134,7 +134,8 @@ func main() {
 	valuesDir = OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/agent-install.cfg"
 	fmt.Println("Posting agent-install.cfg package: " + fileName)
-	cfgFile, err := ioutil.ReadFile(fileName)
+	cleanedPath := filepath.Clean(configFile)
+	cfgFile, err := os.ReadFile(filepath.Clean(fileName))
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -156,7 +157,7 @@ func main() {
 	valuesDir = OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/agent-install-wrapper.sh"
 	fmt.Println("Setting SVI package: " + fileName)
-	wrapperFile, err := ioutil.ReadFile(fileName)
+	wrapperFile, err := os.ReadFile(filepath.Clean(fileName))
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -185,7 +186,7 @@ func main() {
 		}
 		ExchangeInternalCertPath = workingDir + "/agent-install.crt"
 		outils.Verbose("Creating %s ...", ExchangeInternalCertPath)
-		if err := ioutil.WriteFile(ExchangeInternalCertPath, crtBytes, 0644); err != nil {
+		if err := os.WriteFile(filepath.Clean(ExchangeInternalCertPath), crtBytes, 0600); err != nil {
 			outils.Fatal(3, "could not create "+ExchangeInternalCertPath+": "+err.Error())
 		}
 	}
@@ -226,7 +227,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 2 { // POST /api/orgs/{ord-id}/fdo/redirect
 		postFdoRedirectHandler(matches[1], w, r)
 	} else if matches := OrgFDORedirectRegex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 2 { // GET /api/orgs/{ord-id}/fdo/redirect
-    	getFdoRedirectHandler(matches[1], w, r)
+		getFdoRedirectHandler(matches[1], w, r)
 	} else if matches := GetFDOTo0Regex.FindStringSubmatch(r.URL.Path); r.Method == "GET" && len(matches) >= 3 { // GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid}
 		getFdoTo0Handler(matches[1], matches[2], w, r)
 	} else if matches := OrgFDOResourceRegex.FindStringSubmatch(r.URL.Path); r.Method == "POST" && len(matches) >= 3 { // POST /api/orgs/{ord-id}/fdo/resource/{resourceFile}
@@ -244,7 +245,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 // Route Handlers --------------------------------------------------------------------------------------------------
 
-//============= GET /api/version =============
+// ============= GET /api/version =============
 // Returns the ocs-api version (in plain text, not json)
 func getVersionHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/version ...")
@@ -258,7 +259,7 @@ func getVersionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//============= GET /api/fdo/version =============
+// ============= GET /api/fdo/version =============
 // Returns the fdo Owner Service version (in plain text, not json)
 func getFdoVersionHandler(w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/fdo/version ...")
@@ -284,7 +285,7 @@ func getFdoVersionHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//============= GET /api/orgs/{ord-id}/fdo/certificate/<alias> =============
+// ============= GET /api/orgs/{ord-id}/fdo/certificate/<alias> =============
 // Reads/returns owner service public keys based off device alias
 func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/certificate/%s ...", orgId)
@@ -307,7 +308,7 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 		return
 	}
 
-    //Only 5 public key alias types allowed
+	//Only 5 public key alias types allowed
 	if (publicKeyType) != "SECP256R1" && (publicKeyType) != "SECP384R1" && (publicKeyType) != "RSAPKCS3072" && (publicKeyType) != "RSAPKCS2048" && (publicKeyType) != "RSA2048RESTR" {
 		http.Error(w, "Public key type must be one of these supported alias': SECP256R1, SECP384R1, RSAPKCS3072, RSAPKCS2048, RSA2048RESTR", http.StatusBadRequest)
 		return
@@ -346,8 +347,8 @@ func getFdoPublicKeyHandler(orgId string, publicKeyType string, w http.ResponseW
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//IMPORT VOUCHER
-//============= POST /api/orgs/{ord-id}/fdo/vouchers and POST /api/fdo/vouchers =============
+// IMPORT VOUCHER
+// ============= POST /api/orgs/{ord-id}/fdo/vouchers and POST /api/fdo/vouchers =============
 // Imports a voucher
 func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers ... ...", orgId)
@@ -419,7 +420,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 	// Create the device directory in the OCS DB
 	deviceDir := OcsDbDir + "/v1/devices/" + deviceUuid
-	if err := os.MkdirAll(deviceDir, 0750); err != nil {
+	if err := os.MkdirAll(filepath.Clean(deviceDir), 0750); err != nil {
 		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -427,7 +428,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	// Put the voucher in the OCS DB
 	fileName := deviceDir + "/ownership_voucher.txt"
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), bodyBytes, 0600); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -435,7 +436,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	// Create orgid.txt file to identify what org this device/voucher is part of
 	fileName = deviceDir + "/orgid.txt"
 	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0600); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -452,7 +453,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	execCmd := fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom)
 	fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
 	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0600); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -461,7 +462,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	valuesDir := OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/" + deviceUuid + "_exec"
 	fmt.Println("Device Specific Wrapper: " + fileName)
-	wrapperFile, err := ioutil.ReadFile(fileName)
+	wrapperFile, err := os.ReadFile(filepath.Clean(fileName))
 	if err != nil {
 		http.Error(w, "Error reading "+fileName+": "+err.Error(), http.StatusNotFound)
 		return
@@ -530,7 +531,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 }
 
-//============= GET /api/orgs/{ord-id}/fdo/vouchers =============
+// ============= GET /api/orgs/{ord-id}/fdo/vouchers =============
 // Reads/returns all of the already imported vouchers
 func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers ...", orgId)
@@ -577,10 +578,9 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	//     	if err != nil {
 	//     		log.Fatalln(err)
 	//     	}
-
 	// Read the v1/devices/ directory in the db for multitenancy
 	vouchersDirName := OcsDbDir + "/v1/devices"
-	deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+	deviceDirs, err := os.ReadDir(filepath.Clean(vouchersDirName))
 	if err != nil {
 		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -616,8 +616,8 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 }
 
-//GET A SPECIFIED VOUCHER
-//============= GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid} =============
+// GET A SPECIFIED VOUCHER
+// ============= GET /api/orgs/{ord-id}/fdo/vouchers/{deviceUuid} =============
 // Reads/returns a specific imported voucher
 func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/vouchers/%s ...", orgId)
@@ -650,7 +650,7 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 	//if not, then return error
 	// Read voucher.json from the db
 	voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/ownership_voucher.txt"
-	voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
+	voucherBytes, err := os.ReadFile(filepath.Clean(voucherFileName))
 	if err != nil {
 		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
 		return
@@ -704,7 +704,7 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 	outils.WriteResponse(http.StatusOK, w, voucherBytes)
 }
 
-//============= POST /api/orgs/{ord-id}/fdo/redirect =============
+// ============= POST /api/orgs/{ord-id}/fdo/redirect =============
 // Configure the Owner Services TO2 address
 func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("POST /api/orgs/%s/fdo/redirect ... ...", orgId)
@@ -780,7 +780,7 @@ func postFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//============= GET /api/orgs/{ord-id}/fdo/redirect =============
+// ============= GET /api/orgs/{ord-id}/fdo/redirect =============
 // Get the Owner Services TO2 address
 func getFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/redirect ... ...", orgId)
@@ -839,7 +839,7 @@ func getFdoRedirectHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//============= GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid} =============
+// ============= GET /api/orgs/{ord-id}/fdo/to0/{deviceUuid} =============
 // Initiates TO0 from Owner service
 func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/to0/%s ...", orgId)
@@ -893,8 +893,8 @@ func getFdoTo0Handler(orgId string, deviceUuid string, w http.ResponseWriter, r 
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//IMPORT RESOURCE FILE (agent-install-wrapper.sh) TO OWNER DB FOR SERVICE INFO PACKAGE
-//============= POST /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
+// IMPORT RESOURCE FILE (agent-install-wrapper.sh) TO OWNER DB FOR SERVICE INFO PACKAGE
+// ============= POST /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
 // Imports a resource file to the DB in order to use for service info package
 func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("POST /api/orgs/%s/fdo/resource/%s ... ...", orgId)
@@ -970,7 +970,7 @@ func postFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWr
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//============= GET /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
+// ============= GET /api/orgs/{ord-id}/fdo/resource/{resourceFile} =============
 // Gets a resource file that was imported to the DB in order to use for service info package
 func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("GET /api/orgs/%s/fdo/resource/%s ... ...", orgId)
@@ -1045,7 +1045,7 @@ func getFdoResourceHandler(orgId string, resourceFile string, w http.ResponseWri
 	outils.WriteResponse(http.StatusOK, w, respBodyBytes)
 }
 
-//============= POST /api/orgs/{ord-id}/fdo/svi =============
+// ============= POST /api/orgs/{ord-id}/fdo/svi =============
 // Uploads SVI instructions to SYSTEM_PACKAGE table in owner db.
 func postFdoSVIHandler(orgId string, w http.ResponseWriter, r *http.Request) {
 	outils.Verbose("POST /api/orgs/%s/fdo/svi ... ...", orgId)
@@ -1163,7 +1163,7 @@ func getOrgidTxtStr(deviceId string) (string, *outils.HttpError) {
 	if outils.PathExists(orgidTxtFileName) {
 		var orgidTxtBytes []byte
 		var err error
-		if orgidTxtBytes, err = ioutil.ReadFile(orgidTxtFileName); err != nil {
+		if orgidTxtBytes, err = os.ReadFile(filepath.Clean(orgidTxtFileName)); err != nil {
 			return "", outils.NewHttpError(http.StatusInternalServerError, "Error reading "+orgidTxtFileName+": "+err.Error())
 		} else {
 			orgidTxtStr = string(orgidTxtBytes)
@@ -1182,7 +1182,7 @@ func getNodeTokenTxtStr(deviceId string) (string, *outils.HttpError) {
 	if outils.PathExists(nodeTokenTxtFileName) {
 		var nodeTokenTxtBytes []byte
 		var err error
-		if nodeTokenTxtBytes, err = ioutil.ReadFile(nodeTokenTxtFileName); err != nil {
+		if nodeTokenTxtBytes, err = os.ReadFile(filepath.Clean(nodeTokenTxtFileName)); err != nil {
 			return "", outils.NewHttpError(http.StatusInternalServerError, "Error reading "+nodeTokenTxtFileName+": "+err.Error())
 		} else {
 			nodeTokenTxtStr = string(nodeTokenTxtBytes)
@@ -1217,14 +1217,14 @@ func createConfigFiles() *outils.HttpError {
 	if len(crt) > 0 {
 		fileName = valuesDir + "/agent-install.crt"
 		outils.Verbose("Creating %s ...", fileName)
-		if err := ioutil.WriteFile(filepath.Clean(fileName), crt, 0644); err != nil {
+		if err := os.WriteFile(filepath.Clean(fileName), crt, 0600); err != nil {
 			return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 		}
 
 		fileName = valuesDir + "/agent-install-crt_name"
 		outils.Verbose("Creating %s ...", fileName)
 		dataStr = "agent-install.crt"
-		if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+		if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0600); err != nil {
 			return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 		}
 	}
@@ -1245,7 +1245,7 @@ func createConfigFiles() *outils.HttpError {
 		// only add this if we actually created the agent-install.crt file above
 		dataStr += "HZN_MGMT_HUB_CERT_PATH=agent-install.crt\n"
 	}
-	if err := ioutil.WriteFile(fileName, []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0600); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 	fmt.Printf("Will be configuring devices to use config:\n%s\n", dataStr)
@@ -1253,7 +1253,7 @@ func createConfigFiles() *outils.HttpError {
 	fileName = valuesDir + "/agent-install-cfg_name"
 	outils.Verbose("Creating %s ...", fileName)
 	dataStr = "agent-install.cfg"
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0600); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 
@@ -1267,7 +1267,7 @@ func createConfigFiles() *outils.HttpError {
 	fileName = valuesDir + "/agent-install-wrapper-sh_name"
 	outils.Verbose("Creating %s ...", fileName)
 	dataStr = "agent-install-wrapper.sh"
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0600); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 

@@ -273,10 +273,10 @@ func DownloadFile(url, fileName string, perm os.FileMode) error {
 func CopyFile(fromFileName, toFileName string, perm os.FileMode) *HttpError {
 	var content []byte
 	var err error
-	if content, err = ioutil.ReadFile(fromFileName); err != nil {
+	if content, err = os.ReadFile(fromFileName); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not read "+fromFileName+": "+err.Error())
 	}
-	if err = ioutil.WriteFile(toFileName, content, perm); err != nil {
+	if err = os.WriteFile(toFileName, content, perm); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not write "+toFileName+": "+err.Error())
 	}
 	return nil
@@ -486,7 +486,9 @@ func NewHTTPClient(certPath string) (*http.Client, *HttpError) {
 	return httpClient, nil
 }
 
-/* TrustIcpCert adds the icp cert file to be trusted (if exists) in calls made by the given http client. 3 cases:
+/*
+	TrustIcpCert adds the icp cert file to be trusted (if exists) in calls made by the given http client. 3 cases:
+
 1. no cert is needed because a CA-trusted cert is being used, or the svr uses http
 2. a self-signed cert is being used, but they told us to connect insecurely
 3. a non-blank certPath is specified that we will use
@@ -503,9 +505,8 @@ func TrustIcpCert(transport *http.Transport, certPath string) *HttpError {
 	if certPath == "" {
 		return nil
 	}
-
 	// Case 3:
-	icpCert, err := ioutil.ReadFile(filepath.Clean(certPath))
+	icpCert, err := os.ReadFile(filepath.Clean(certPath))
 	if err != nil {
 		return NewHttpError(http.StatusInternalServerError, "Encountered error reading ICP cert file %v: %v", certPath, err)
 	}
@@ -621,4 +622,3 @@ func SplitIdToken(idToken string) (id, token string) {
 	}
 	return
 }
-
