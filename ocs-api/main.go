@@ -62,13 +62,13 @@ func main() {
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
 
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
-	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(filepath.Abs(OcsDbDir),"/v1/devices"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/devices", err)
 	}
-	if err := os.MkdirAll(OcsDbDir+"/v1/values", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(OcsDbDir,"/v1/values"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/values", err)
 	}
-	if err := os.MkdirAll(OcsDbDir+"/v1/creds/publicKeys", 0750); err != nil {
+	if err := os.MkdirAll(filepath.Join(OcsDbDir,"/v1/creds/publicKeys"), 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/creds/publicKeys", err)
 	}
 
@@ -419,7 +419,12 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 	// Create the device directory in the OCS DB
 	deviceDir := OcsDbDir + "/v1/devices/" + deviceUuid
-	if err := os.MkdirAll(deviceDir, 0750); err != nil {
+	absDeviceDir, err := filepath.Abs(deviceDir)
+	if err != nil {
+		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := os.MkdirAll(absdeviceDir, 0750); err != nil {
 		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
