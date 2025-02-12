@@ -52,7 +52,8 @@ func main() {
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
-	OcsDbDir = os.Args[2]
+	OcsDbDir = filepath.Abs(os.Args[2])
+	
 	workingDir, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
@@ -60,6 +61,8 @@ func main() {
 	outils.SetVerbose()
 	ExchangeInternalRetries = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_RETRIES", 12) // by default a total of 1 minute of trying
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
+
+
 
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
 	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0750); err != nil {
