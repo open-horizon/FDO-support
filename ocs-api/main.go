@@ -52,7 +52,8 @@ func main() {
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
-	OcsDbDir = filepath.Clean(os.Args[2])
+	OcsDbDir = os.Args[2]
+	//OcsDbDir = filepath.Clean(os.Args[2])
 	
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -146,7 +147,7 @@ func main() {
 	configResource := "agent-install.cfg"
 	fdoCfgURL := fdoOwnerURL + "/api/v1/owner/resource?filename=" + configResource
 	fmt.Println("URL for agent-install.cfg: " + fdoCfgURL)
-	newResp, err = client.Post(url.Parse(fdoCfgURL), "text/plain", bytes.NewReader(cfgFile))
+	newResp, err = client.Post(fdoCfgURL, "text/plain", bytes.NewReader(cfgFile))
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error posting "+configResource+" in SVI Database: "+err.Error())
 		return
