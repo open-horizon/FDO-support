@@ -52,8 +52,8 @@ func main() {
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
-	OcsDbDir = os.Args[2]
-	//OcsDbDir = filepath.Clean(os.Args[2])
+	//OcsDbDir = os.Args[2]
+	OcsDbDir = filepath.Clean(os.Args[2])
 
 	workingDir, err := os.Getwd()
 	if err != nil {
