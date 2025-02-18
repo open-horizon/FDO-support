@@ -54,7 +54,6 @@ func main() {
 	// Process cmd line args and env vars
 	port := os.Args[1]
 	OcsDbDir = os.Args[2]
-	cleanocb := filepath.Clean(OcsDbDir)
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -65,7 +64,7 @@ func main() {
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
 
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
-	if err := os.MkdirAll(cleanocb+"/v1/devices", 0750); err != nil {
+	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/devices", err)
 	}
 	if err := os.MkdirAll(OcsDbDir+"/v1/values", 0750); err != nil {
@@ -100,9 +99,8 @@ func main() {
 	client := &http.Client{
 		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
 	}
-
-	if !isValidURL(fdoTo2URL) {
-		outils.Fatal(3, "bad url", err)
+	if !isValidURL(fdoOwnerURL) {
+		log.Fatalln("url not in whitelist")
 	}
 	resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(to2Byte))
 	if err != nil {
@@ -229,6 +227,13 @@ func isValidURL(requestURL string) bool {
 	if strings.HasPrefix(host, "localhost") || strings.HasPrefix(host, "127.") || strings.HasPrefix(host, "0.") ||
 		strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") || strings.HasPrefix(host, "192.") {
 		return false
+	}
+
+	allowedHosts := []string{"example.com", "api.example.com"}
+	for _, allowedHost := range allowedHosts {
+		if host == allowedHost {
+			return true
+		}
 	}
 
 	return false
