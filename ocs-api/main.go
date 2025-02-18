@@ -53,7 +53,7 @@ func main() {
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
-	OcsDbDir = os.Args[2]
+	OcsDbDir = filepath.Clean(os.Args[2])
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -64,7 +64,7 @@ func main() {
 	ExchangeInternalInterval = outils.GetEnvVarIntWithDefault("EXCHANGE_INTERNAL_INTERVAL", 5)
 
 	// Ensure we can get to the db, and create the necessary subdirs, if necessary
-	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0700); err != nil {
+	if err := os.MkdirAll(OcsDbDir+"/v1/devices", 0750); err != nil {
 		outils.Fatal(3, "could not create directory %s: %v", OcsDbDir+"/v1/devices", err)
 	}
 	if err := os.MkdirAll(OcsDbDir+"/v1/values", 0750); err != nil {
