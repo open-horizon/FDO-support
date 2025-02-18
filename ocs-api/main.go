@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -52,8 +53,7 @@ func main() {
 
 	// Process cmd line args and env vars
 	port := os.Args[1]
-	//OcsDbDir = os.Args[2]
-	OcsDbDir = filepath.Clean(os.Args[2])
+	OcsDbDir = os.Args[2]
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -98,6 +98,10 @@ func main() {
 
 	client := &http.Client{
 		Transport: dab.NewDigestTransport(username, password, http.DefaultTransport),
+	}
+
+	if !isValidURL(fdoTo2URL) {
+		outils.Fatal(3, "bad url", err)
 	}
 	resp, err := client.Post(fdoTo2URL, "text/plain", bytes.NewReader(to2Byte))
 	if err != nil {
@@ -209,6 +213,25 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 	}
 } // end of main
+
+func isValidURL(requestURL string) bool {
+	parsedURL, err := url.Parse(requestURL)
+	if err != nil {
+		return false
+	}
+
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return false
+	}
+
+	host := parsedURL.Hostname()
+	if strings.HasPrefix(host, "localhost") || strings.HasPrefix(host, "127.") || strings.HasPrefix(host, "0.") ||
+		strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") || strings.HasPrefix(host, "192.") {
+		return false
+	}
+
+	return false
+}
 
 // API route dispatcher
 func apiHandler(w http.ResponseWriter, r *http.Request) {
