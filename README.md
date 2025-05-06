@@ -9,7 +9,8 @@ The software in this git repository provides integration between FDO and Open Ho
 1. A docker image of of the FDO "Owner" service (those that run on the Horizon management hub).
 2. An `hzn fdo voucher` sub-command to import one or more ownership vouchers into Owner service. (An ownership voucher is a file that the device manufacturer gives to the purchaser (owner) along with the physical device.)
 3. A sample script called `start-mfg.sh` to start the development Manufacturing service so that the Ownership Voucher can be extended to the user to enable them to run through the FDO-enabling steps on a VM "device" that a device manufacturer would run on a physical device. This allows you to try out the FDO process with your Horizon instance before purchasing FDO-enabled devices.
-4. A REST API that authneticates users through the Exchange and enables importing and querying ownership vouchers.
+4. A sample script called `start-rv.sh` is provided to set up and start a development version of the Rendezvous Server. This script creates an environment where you can test the Rendezvous Server, simulate the FDO onboarding process, and try out the device ownership voucher exchange—all before deploying actual FDO-enabled devices.
+5. A REST API that authneticates users through the Exchange and enables importing and querying ownership vouchers.
 
 ## <a name="use-fdo"></a>Using the FDO Support
 
@@ -55,24 +56,11 @@ The FDO owner service are packaged as a single docker container that can be run 
 
 Before continuing with the rest of the FDO process, it is good to verify that you have the correct information necessary to reach the FDO owner service endpoints. **On a Horizon "admin" host** run these simple FDO APIs to verify that the services are accessible and responding properly. (A Horizon admin host is one that has the `horizon-cli` package installed, which provides the `hzn` command, and has the environment variables `HZN_EXCHANGE_URL`, `HZN_FDO_SVC_URL`, and `HZN_EXCHANGE_USER_AUTH` set correctly for your Horizon management hub.)
 
-FIDO Device Onboard Rendezvous Servers:
-```bash
- Development:
-   http://test.fdorv.com:80
-   https://test.fdorv.com:443
-   
- Production:
-   http://fdorv.com:80
-   https://fdorv.com:443
-```
-
-
 1. Export these environment variables for the subsequent steps. Contact the management hub installer for the exact values:
 
    ```bash
    export FDO_OWN_SVC_PORT=8042
    export FDO_OWN_COMP_SVC_PORT=9008
-   export FDO_RV_URL=http://test.fdorv.com:80
    export HZN_ORG_ID=myorg # <organization>
    export HZN_EXCHANGE_USER_AUTH=admin:password  # <identity>:<password>
    export HZN_TRANSPORT=http # http
@@ -97,10 +85,26 @@ FIDO Device Onboard Rendezvous Servers:
    hzn fdo voucher list
    ```
 
-4. "Ping" the rendezvous server:
+4. "Run the Rendezvous Server Script"
+   After setting the environment variables, you can execute the script (`start-rv.sh`) to start the Rendezvous server, enabling the FDO onboarding process. The script will handle the necessary configuration and ensure that the server is ready for use.
 
    ```bash
-   curl -D --location --request GET $FDO_RV_URL/health
+   curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-mfg/start-rv.sh
+   chmod +x start-rv.sh
+   export FIDO_DEVICE_ONBOARD_REL_VER=1.1.9 # https://github.com/fido-device-onboard/release-fidoiot/releases
+   sudo -E ./start-rv.sh
+   ```
+
+5. "Get and export ip address of the Rendezvous Server"
+
+   ```bash
+   export FDO_RV_URL="http://$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' pri-fdo-rv):80"
+   ```
+
+6. "Ping" the rendezvous server:
+
+   ```bash
+   curl -D --location --request GET "$FDO_RV_URL/health"
    ```
 
 
@@ -126,7 +130,7 @@ export HZN_LISTEN_IP=127.0.0.1 # localhost, domain, or ip address of Management 
 sudo -E ./start-mfg.sh
 ```
 
-All the following steps interacting with localhost:8039 are automated by the `./start-mfh.sh` script.
+All the following steps interacting with localhost:8039 are automated by the `./start-mfg.sh` script.
 
 1. **On your VM to be initialized**, run the first API to post instructions for manufacturer to redirect device to correct RV server, and run the second API to verify you posted the correct instructions:
 
@@ -352,6 +356,7 @@ These steps only need to be performed by developers of this project
 - Create a [release](https://github.com/open-horizon/FDO-support/releases) with the major and minor version (but not a patch number), e.g. `v1.2`
 - Upload these assets to the release:
     - sample-mfg/start-mfg.sh
+    - sample-mfg/start-rv.sh
     - docker/run-fdo-owner-service.sh
 - Copy the previous version of the `README-*.md` to a new version and make the appropriate changes
 
@@ -369,11 +374,12 @@ What to modify in our FDO support code when the FDO project releases a new versi
   - `docker/Dockerfile`
   - `docs/README.md`
   - `start-mfg.sh`
+  - `start-rv.sh`
 
 - If new major or minor version:
   - update `.gitignore`
   - create a new release in https://github.com/open-horizon/FDO-support/releases/ , and upload all device-related files/scripts.
 - If a fix pack:
-  - Update the device binary tar file and `start-mfg.sh` in the current release in https://github.com/open-horizon/FDO-support/releases/
+  - Update the device binary tar file and `start-mfg.sh` / `start-rv.sh` in the current release in https://github.com/open-horizon/FDO-support/releases/
   - Update the title and description to indicate the new fix pack version
 - When testing, copy new versions of scripts to the test machines
