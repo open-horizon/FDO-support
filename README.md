@@ -89,7 +89,7 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
    After setting the environment variables, you can execute the script (`start-rv.sh`) to start the Rendezvous server, enabling the FDO onboarding process. The script will handle the necessary configuration and ensure that the server is ready for use.
 
    ```bash
-   curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-mfg/start-rv.sh
+   curl -sSLO https://raw.githubusercontent.com/open-horizon/FDO-support/main/sample-rv/start-rv.sh
    chmod +x start-rv.sh
    export FIDO_DEVICE_ONBOARD_REL_VER=1.1.9 # https://github.com/fido-device-onboard/release-fidoiot/releases
    sudo -E ./start-rv.sh
