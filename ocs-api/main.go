@@ -111,7 +111,7 @@ func main() {
 	valuesDir := OcsDbDir + "/v1/values"
 	fileName := valuesDir + "/agent-install.crt"
 	fmt.Println("Posting agent-install.crt package: " + fileName)
-	certFile, err := ioutil.ReadFile(fileName)
+	certFile, err := os.ReadFile(fileName)
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -134,7 +134,7 @@ func main() {
 	valuesDir = OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/agent-install.cfg"
 	fmt.Println("Posting agent-install.cfg package: " + fileName)
-	cfgFile, err := ioutil.ReadFile(fileName)
+	cfgFile, err := os.ReadFile(fileName)
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -156,7 +156,7 @@ func main() {
 	valuesDir = OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/agent-install-wrapper.sh"
 	fmt.Println("Setting SVI package: " + fileName)
-	wrapperFile, err := ioutil.ReadFile(fileName)
+	wrapperFile, err := os.ReadFile(fileName)
 	if err != nil {
 		outils.NewHttpError(http.StatusInternalServerError, "Error reading "+fileName+": "+err.Error())
 		return
@@ -185,7 +185,7 @@ func main() {
 		}
 		ExchangeInternalCertPath = workingDir + "/agent-install.crt"
 		outils.Verbose("Creating %s ...", ExchangeInternalCertPath)
-		if err := ioutil.WriteFile(ExchangeInternalCertPath, crtBytes, 0644); err != nil {
+		if err := os.WriteFile(ExchangeInternalCertPath, crtBytes, 0644); err != nil {
 			outils.Fatal(3, "could not create "+ExchangeInternalCertPath+": "+err.Error())
 		}
 	}
@@ -427,7 +427,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	// Put the voucher in the OCS DB
 	fileName := deviceDir + "/ownership_voucher.txt"
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), bodyBytes, 0644); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -435,7 +435,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	// Create orgid.txt file to identify what org this device/voucher is part of
 	fileName = deviceDir + "/orgid.txt"
 	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(deviceOrgId), 0644); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -452,7 +452,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	execCmd := fmt.Sprintf("/bin/sh agent-install-wrapper.sh -i %s -a %s:%s -O %s -k %s", PkgsFrom, deviceUuid, nodeToken, deviceOrgId, CfgFileFrom)
 	fileName = OcsDbDir + "/v1/values/" + deviceUuid + "_exec"
 	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s ...", deviceOrgId, fileName)
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(execCmd), 0644); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -461,7 +461,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	valuesDir := OcsDbDir + "/v1/values"
 	fileName = valuesDir + "/" + deviceUuid + "_exec"
 	fmt.Println("Device Specific Wrapper: " + fileName)
-	wrapperFile, err := ioutil.ReadFile(fileName)
+	wrapperFile, err := os.ReadFile(fileName)
 	if err != nil {
 		http.Error(w, "Error reading "+fileName+": "+err.Error(), http.StatusNotFound)
 		return
@@ -580,7 +580,7 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 
 	// Read the v1/devices/ directory in the db for multitenancy
 	vouchersDirName := OcsDbDir + "/v1/devices"
-	deviceDirs, err := ioutil.ReadDir(filepath.Clean(vouchersDirName))
+	deviceDirs, err := os.ReadDir(filepath.Clean(vouchersDirName))
 	if err != nil {
 		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -650,7 +650,7 @@ func getFdoVoucherHandler(orgId string, deviceUuid string, w http.ResponseWriter
 	//if not, then return error
 	// Read voucher.json from the db
 	voucherFileName := OcsDbDir + "/v1/devices/" + deviceUuid + "/ownership_voucher.txt"
-	voucherBytes, err := ioutil.ReadFile(filepath.Clean(voucherFileName))
+	voucherBytes, err := os.ReadFile(filepath.Clean(voucherFileName))
 	if err != nil {
 		http.Error(w, "Error reading "+voucherFileName+": "+err.Error(), http.StatusNotFound)
 		return
@@ -1163,7 +1163,7 @@ func getOrgidTxtStr(deviceId string) (string, *outils.HttpError) {
 	if outils.PathExists(orgidTxtFileName) {
 		var orgidTxtBytes []byte
 		var err error
-		if orgidTxtBytes, err = ioutil.ReadFile(orgidTxtFileName); err != nil {
+		if orgidTxtBytes, err = os.ReadFile(orgidTxtFileName); err != nil {
 			return "", outils.NewHttpError(http.StatusInternalServerError, "Error reading "+orgidTxtFileName+": "+err.Error())
 		} else {
 			orgidTxtStr = string(orgidTxtBytes)
@@ -1182,7 +1182,7 @@ func getNodeTokenTxtStr(deviceId string) (string, *outils.HttpError) {
 	if outils.PathExists(nodeTokenTxtFileName) {
 		var nodeTokenTxtBytes []byte
 		var err error
-		if nodeTokenTxtBytes, err = ioutil.ReadFile(nodeTokenTxtFileName); err != nil {
+		if nodeTokenTxtBytes, err = os.ReadFile(nodeTokenTxtFileName); err != nil {
 			return "", outils.NewHttpError(http.StatusInternalServerError, "Error reading "+nodeTokenTxtFileName+": "+err.Error())
 		} else {
 			nodeTokenTxtStr = string(nodeTokenTxtBytes)
@@ -1217,14 +1217,14 @@ func createConfigFiles() *outils.HttpError {
 	if len(crt) > 0 {
 		fileName = valuesDir + "/agent-install.crt"
 		outils.Verbose("Creating %s ...", fileName)
-		if err := ioutil.WriteFile(filepath.Clean(fileName), crt, 0644); err != nil {
+		if err := os.WriteFile(filepath.Clean(fileName), crt, 0644); err != nil {
 			return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 		}
 
 		fileName = valuesDir + "/agent-install-crt_name"
 		outils.Verbose("Creating %s ...", fileName)
 		dataStr = "agent-install.crt"
-		if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+		if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
 			return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 		}
 	}
@@ -1245,7 +1245,7 @@ func createConfigFiles() *outils.HttpError {
 		// only add this if we actually created the agent-install.crt file above
 		dataStr += "HZN_MGMT_HUB_CERT_PATH=agent-install.crt\n"
 	}
-	if err := ioutil.WriteFile(fileName, []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(fileName, []byte(dataStr), 0644); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 	fmt.Printf("Will be configuring devices to use config:\n%s\n", dataStr)
@@ -1253,7 +1253,7 @@ func createConfigFiles() *outils.HttpError {
 	fileName = valuesDir + "/agent-install-cfg_name"
 	outils.Verbose("Creating %s ...", fileName)
 	dataStr = "agent-install.cfg"
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 
@@ -1267,7 +1267,7 @@ func createConfigFiles() *outils.HttpError {
 	fileName = valuesDir + "/agent-install-wrapper-sh_name"
 	outils.Verbose("Creating %s ...", fileName)
 	dataStr = "agent-install-wrapper.sh"
-	if err := ioutil.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
+	if err := os.WriteFile(filepath.Clean(fileName), []byte(dataStr), 0644); err != nil {
 		return outils.NewHttpError(http.StatusInternalServerError, "could not create "+fileName+": "+err.Error())
 	}
 

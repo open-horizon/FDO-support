@@ -273,10 +273,10 @@ func DownloadFile(url, fileName string, perm os.FileMode) error {
 func CopyFile(fromFileName, toFileName string, perm os.FileMode) *HttpError {
 	var content []byte
 	var err error
-	if content, err = ioutil.ReadFile(fromFileName); err != nil {
+	if content, err = os.ReadFile(fromFileName); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not read "+fromFileName+": "+err.Error())
 	}
-	if err = ioutil.WriteFile(toFileName, content, perm); err != nil {
+	if err = os.WriteFile(toFileName, content, perm); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not write "+toFileName+": "+err.Error())
 	}
 	return nil
@@ -505,7 +505,7 @@ func TrustIcpCert(transport *http.Transport, certPath string) *HttpError {
 	}
 
 	// Case 3:
-	icpCert, err := ioutil.ReadFile(filepath.Clean(certPath))
+	icpCert, err := os.ReadFile(filepath.Clean(certPath))
 	if err != nil {
 		return NewHttpError(http.StatusInternalServerError, "Encountered error reading ICP cert file %v: %v", certPath, err)
 	}
