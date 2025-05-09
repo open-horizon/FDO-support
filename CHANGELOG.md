@@ -1,6 +1,9 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.5.0] - 2025-05.06
+- Add a script to support the FDO RV server.
+- Update README.md
 
 ## [1.4.0] - 2024-01.16
 - Issue 51: Updated to support FDO `1.1.7` release.

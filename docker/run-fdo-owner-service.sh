@@ -6,7 +6,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
 Usage: ${0##*/} [<image-version>]
 Arguments:
-  <image-version>  The image tag to use. Defaults to '1.4.0'
+  <image-version>  The image tag to use. Defaults to '1.5.0'
 Required environment variables:
   HZN_MGMT_HUB_CERT: the base64 encoded content of the management hub cluster ingress self-signed certificate (can be set to 'N/A' if the mgmt hub does not require a cert). If set, this certificate is given to the edge nodes in the HZN_MGMT_HUB_CERT_PATH variable.
 
@@ -61,7 +61,7 @@ export FDO_OWN_DB_USER=${FDO_OWN_DB_USER:-fdouser}
 export FDO_OWN_SVC_AUTH=${FDO_OWN_SVC_AUTH:-apiUser:$(generateToken 30)}
 export FDO_DB_URL=${FDO_DB_URL:-jdbc:postgresql://postgres-fdo-owner-service:5432/$FDO_OWN_DB}
 export POSTGRES_HOST_AUTH_METHOD=${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}
-export POSTGRES_IMAGE_TAG=${POSTGRES_IMAGE_TAG:-13}
+export POSTGRES_IMAGE_TAG=${POSTGRES_IMAGE_TAG:-17}
 
 
 export HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
@@ -74,7 +74,7 @@ export HZN_MGMT_HUB_CERT=${HZN_MGMT_HUB_CERT:-$(cat ./agent-install.crt | base64
 export VERBOSE=${VERBOSE:-false}
 
 EXCHANGE_INTERNAL_CERT="${HZN_MGMT_HUB_CERT:-N/A}"
-VERSION="${1:-1.4.0}"
+VERSION="${1:-1.5.0}"
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-openhorizon}
 FDO_DOCKER_IMAGE=${FDO_DOCKER_IMAGE:-fdo-owner-services}
