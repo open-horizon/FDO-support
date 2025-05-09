@@ -48,7 +48,7 @@ The FDO owner service are packaged as a single docker container that can be run 
 5. Start the FDO owner service docker container and view the log:
 
    ```bash
-   ./docker/run-fdo-owner-service.sh 1.4.0
+   ./docker/run-fdo-owner-service.sh 1.5.0
    docker logs -f fdo-owner-service
    ```
 
@@ -85,7 +85,7 @@ Before continuing with the rest of the FDO process, it is good to verify that yo
    hzn fdo voucher list
    ```
 
-4. "Run the Rendezvous Server Script"
+4. "Set up Rendezvous Server"
    After setting the environment variables, you can execute the script (`start-rv.sh`) to start the Rendezvous server, enabling the FDO onboarding process. The script will handle the necessary configuration and ensure that the server is ready for use.
 
    ```bash

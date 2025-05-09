@@ -31,7 +31,7 @@ chk() {
   fi
 }
 
-chkHttp() {
+chk_http() {
   local statusCode=$1
   local httpCode=$2
   local message=$3
@@ -51,27 +51,27 @@ check_root_user() {
   fi
 }
 
-isUbuntu2x() {
+is_Ubuntu2x() {
   grep -qi 'ubuntu' /etc/os-release
 }
 
-isRHEL() {
+is_RHEL() {
   grep -qi 'rhel' /etc/os-release
 }
 
-isFedora() {
+is_Fedora() {
   grep -qi 'fedora' /etc/os-release
 }
 
 install_java() {
-  echo "☕ Java 17 not found, installing..."
+  echo "Java 17 not found, installing..."
 
-  if isUbuntu2x; then
+  if is_Ubuntu2x; then
     apt-get update
     apt-get install -y openjdk-17-jre-headless
     chk $? "installing Java 17 on Ubuntu"
 
-  elif isRHEL || isFedora; then
+  elif is_RHEL || is_Fedora; then
     dnf install -y java-17-openjdk
     chk $? "installing Java 17 on RHEL/Fedora"
 
@@ -96,7 +96,7 @@ check_and_install_java() {
 install_docker() {
   echo "Docker is required, installing it..."
 
-  if isUbuntu2x; then
+  if is_Ubuntu2x; then
     apt-get update
     apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
     chk $? "installing Docker prerequisites"
@@ -113,7 +113,7 @@ install_docker() {
     apt-get install -y docker-ce docker-ce-cli containerd.io
     chk $? "installing Docker on Ubuntu"
 
-  elif isRHEL; then
+  elif is_RHEL; then
     dnf -y install dnf-plugins-core
     chk $? "installing dnf plugins"
 
@@ -123,7 +123,7 @@ install_docker() {
     dnf install -y docker-ce docker-ce-cli containerd.io
     chk $? "installing Docker on RHEL"
 
-  elif isFedora; then
+  elif is_Fedora; then
     dnf install -y moby-engine
     chk $? "installing Docker on Fedora"
 
@@ -184,7 +184,7 @@ download_and_extract_device_binaries() {
     # Download the tar file
     echo "Downloading $deviceBinaryUrl"
     httpCode=$(curl -w "%{http_code}" --progress-bar -L -O $deviceBinaryUrl)
-    chkHttp $? $httpCode "getting $deviceBinaryTar"
+    chk_http $? $httpCode "getting $deviceBinaryTar"
 
     # Extract the tar file
     echo "Extracting $deviceBinaryTar ..."
@@ -267,10 +267,13 @@ main() {
 
     api_user=$(echo "$FDO_RV_SVC_AUTH" | awk -F: '{print $1}')
     api_password=$(echo "$FDO_RV_SVC_AUTH" | awk -F: '{print $2}')
+    rvServiceYmlPath=$PWD/$deviceBinaryDir/rv/service.yml
+    rvServiceEnvPath=$PWD/$deviceBinaryDir/rv/service.env
+
     # Replace db_user and db_password
-    sed -i -e "s/^db_user=.*/db_user=$FDO_RV_DB_USER/" "$PWD/$deviceBinaryDir/rv/service.env"
+    sed -i -e "s/^db_user=.*/db_user=$FDO_RV_DB_USER/" "$rvServiceEnvPath"
     chk $? 'sed rv/service.env db_user'
-    sed -i -e "s/^db_password=.*/db_password=$FDO_RV_DB_PASSWORD/" "$PWD/$deviceBinaryDir/rv/service.env"
+    sed -i -e "s/^db_password=.*/db_password=$FDO_RV_DB_PASSWORD/" "$rvServiceEnvPath"
     chk $? 'sed rv/service.env db_password'
 
     # Configure rv/hibernate.cfg.xml to use PostgreSQL driver
@@ -278,38 +281,38 @@ main() {
     chk $? 'sed rv/hibernate.cfg.xml driver_class'
 
     # Replace hibernate.connection.username and password
-    sed -i -e "0,/hibernate.connection.username:/s|hibernate.connection.username:.*|hibernate.connection.username: $FDO_RV_DB_USER|" "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e "0,/hibernate.connection.username:/s|hibernate.connection.username:.*|hibernate.connection.username: $FDO_RV_DB_USER|" "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml hibernate.connection.username'
-    sed -i -e "0,/hibernate.connection.password:/s|hibernate.connection.password:.*|hibernate.connection.password: $FDO_RV_DB_PASSWORD|" "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e "0,/hibernate.connection.password:/s|hibernate.connection.password:.*|hibernate.connection.password: $FDO_RV_DB_PASSWORD|" "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml hibernate.connection.password'
   
     # Replace JDBC URL
-    sed -i -e "0,/hibernate.connection.url:/s|hibernate.connection.url:.*|hibernate.connection.url: jdbc:postgresql://postgres-fdo-rv-service:5432/fdo_rv|" "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e "0,/hibernate.connection.url:/s|hibernate.connection.url:.*|hibernate.connection.url: jdbc:postgresql://postgres-fdo-rv-service:5432/fdo_rv|" "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml hibernate.connection.url'
 
     # Replace API password
-    sed -i -e "0,/server.api.password:/s|server.api.password:.*|server.api.password: \"$api_password\"|" "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e "0,/server.api.password:/s|server.api.password:.*|server.api.password: \"$api_password\"|" "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml server.api.password'
 
     # Update dialect
-    sed -i -e "0,/hibernate.dialect:/s|hibernate.dialect:.*|hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect|" "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e "0,/hibernate.dialect:/s|hibernate.dialect:.*|hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect|" "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml hibernate.dialect'
 
     # Comment out secrets block
-    sed -i -e '/secrets:/ s/^/#/' "$PWD/$deviceBinaryDir/rv/service.yml"
-    sed -i -e '/- db_password/ s/^/#/' "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i -e '/secrets:/ s/^/#/' "$rvServiceYmlPath"
+    sed -i -e '/- db_password/ s/^/#/' "$rvServiceYmlPath"
 
     # Replace port numbers
-    sed -i 's/^[[:space:]]*http_port: 8040$/  http_port: 80/' "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i 's/^[[:space:]]*http_port: 8040$/  http_port: 80/' "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml http_port: 8040'
-    sed -i 's/^[[:space:]]*https_port: 8041$/  https_port: 443/' "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i 's/^[[:space:]]*https_port: 8041$/  https_port: 443/' "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml https_port: 8041'
 
     # Uncomment UntrustedRendezvousAcceptFunction (preserve indentation)
-    sed -i 's|^\([[:space:]]*\)#- org\.fidoalliance\.fdo\.protocol\.UntrustedRendezvousAcceptFunction|\1- org.fidoalliance.fdo.protocol.UntrustedRendezvousAcceptFunction|' "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i 's|^\([[:space:]]*\)#- org\.fidoalliance\.fdo\.protocol\.UntrustedRendezvousAcceptFunction|\1- org.fidoalliance.fdo.protocol.UntrustedRendezvousAcceptFunction|' "$rvServiceYmlPath"
 
     # Comment TrustedRendezvousAcceptFunction (preserve indentation)
-    sed -i 's|^\([[:space:]]*\)- org\.fidoalliance\.fdo\.protocol\.db\.TrustedRendezvousAcceptFunction|\1#- org.fidoalliance.fdo.protocol.db.TrustedRendezvousAcceptFunction|' "$PWD/$deviceBinaryDir/rv/service.yml"
+    sed -i 's|^\([[:space:]]*\)- org\.fidoalliance\.fdo\.protocol\.db\.TrustedRendezvousAcceptFunction|\1#- org.fidoalliance.fdo.protocol.db.TrustedRendezvousAcceptFunction|' "$rvServiceYmlPath"
 
     echo "Starting RV service..."
     sudo chmod 666 /var/run/docker.sock
