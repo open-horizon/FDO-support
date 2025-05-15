@@ -1,6 +1,9 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.6.0] - 2025-06.04
+-  Fix CWE-22 Path/Directory Traversal issues
+
 ## [1.5.0] - 2025-05.06
 - Add a script to support the FDO RV server.
 - Update README.md
