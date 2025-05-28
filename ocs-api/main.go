@@ -426,7 +426,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	}
 
 	// Put the voucher in the OCS DB
-	fileName := filepath.Clean(filepath.Join(deviceDir, "ownership_voucher.txt"))
+	fileName := filepath.Join(deviceDir, "ownership_voucher.txt")
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: creating %s ...", deviceOrgId, fileName)
 	if err := os.WriteFile(fileName, bodyBytes, 0644); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
@@ -434,7 +434,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	}
 
 	// Create orgid.txt file to identify what org this device/voucher is part of
-	fileName = filepath.Clean(filepath.Join(deviceDir, "orgid.txt"))
+	fileName = filepath.Join(deviceDir, "orgid.txt")
 	outils.Verbose("POST /api/orgs/%s/vouchers: creating %s with value: %s ...", deviceOrgId, fileName, deviceOrgId)
 	if err := os.WriteFile(fileName, []byte(deviceOrgId), 0644); err != nil {
 		http.Error(w, "could not create "+fileName+": "+err.Error(), http.StatusInternalServerError)
@@ -580,8 +580,8 @@ func getFdoVouchersHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	//     	}
 
 	// Read the v1/devices/ directory in the db for multitenancy
-	vouchersDirName := filepath.Join(OcsDbDir, "v1", "devices")
-	deviceDirs, err := os.ReadDir(filepath.Clean(vouchersDirName))
+	vouchersDirName := filepath.Clean(filepath.Join(OcsDbDir, "v1", "devices"))
+	deviceDirs, err := os.ReadDir(vouchersDirName)
 	if err != nil {
 		http.Error(w, "Error reading "+vouchersDirName+" directory: "+err.Error(), http.StatusInternalServerError)
 		return
