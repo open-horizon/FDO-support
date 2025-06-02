@@ -20,6 +20,9 @@ env:
 jobs:
   # Build FDO-Support and pushes it to Dockerhub
   build-push:
+    # Prevent this action from running in forks
+    if: github.repository_owner == 'open-horizon'
+
     runs-on: ubuntu-latest
 
     # Environment variables available to all steps
@@ -86,15 +89,15 @@ jobs:
 
       # Checkout our Github repo
       - name: Checkout Github Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: go/src/github.com/${{ github.repository }}
 
       # Prepare the environment
-      - name: Set up golang 1.21
-        uses: actions/setup-go@v2
+      - name: Set up golang 1.23
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.23'
           check-latest: true
 
       # Configure version variables for later steps, stored in our workflow env. variables
