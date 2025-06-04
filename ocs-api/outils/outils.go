@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	mrand "math/rand"
 	"net"
@@ -273,10 +272,10 @@ func DownloadFile(url, fileName string, perm os.FileMode) error {
 func CopyFile(fromFileName, toFileName string, perm os.FileMode) *HttpError {
 	var content []byte
 	var err error
-	if content, err = ioutil.ReadFile(fromFileName); err != nil {
+	if content, err = os.ReadFile(fromFileName); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not read "+fromFileName+": "+err.Error())
 	}
-	if err = ioutil.WriteFile(toFileName, content, perm); err != nil {
+	if err = os.WriteFile(toFileName, content, perm); err != nil {
 		return NewHttpError(http.StatusInternalServerError, "could not write "+toFileName+": "+err.Error())
 	}
 	return nil
@@ -421,7 +420,7 @@ func ExchangeAuthenticate(r *http.Request, currentExchangeUrl, deviceOrgId, cert
 		}
 		// Non-root user, parse the response body to get the real user
 		users := new(GetUsersResponse)
-		if bodyBytes, err := ioutil.ReadAll(resp.Body); err != nil {
+		if bodyBytes, err := io.ReadAll(resp.Body); err != nil {
 			return false, "", NewHttpError(http.StatusInternalServerError, "unable to read HTTP response body for %s, error: %v", apiMsg, err)
 		} else if err = json.Unmarshal(bodyBytes, users); err != nil {
 			return false, "", NewHttpError(http.StatusInternalServerError, "unable to unmarshal HTTP response body for %s, error: %v", apiMsg, err)
@@ -486,7 +485,9 @@ func NewHTTPClient(certPath string) (*http.Client, *HttpError) {
 	return httpClient, nil
 }
 
-/* TrustIcpCert adds the icp cert file to be trusted (if exists) in calls made by the given http client. 3 cases:
+/*
+	TrustIcpCert adds the icp cert file to be trusted (if exists) in calls made by the given http client. 3 cases:
+
 1. no cert is needed because a CA-trusted cert is being used, or the svr uses http
 2. a self-signed cert is being used, but they told us to connect insecurely
 3. a non-blank certPath is specified that we will use
@@ -505,7 +506,7 @@ func TrustIcpCert(transport *http.Transport, certPath string) *HttpError {
 	}
 
 	// Case 3:
-	icpCert, err := ioutil.ReadFile(filepath.Clean(certPath))
+	icpCert, err := os.ReadFile(filepath.Clean(certPath))
 	if err != nil {
 		return NewHttpError(http.StatusInternalServerError, "Encountered error reading ICP cert file %v: %v", certPath, err)
 	}
@@ -569,12 +570,12 @@ func RunCmd(options RunCmdOpts, commandString string, args ...string) ([]byte, [
 
 	// Read the output from stdout and stderr into byte arrays
 	// stdoutBytes, err := readPipe(stdout)
-	stdoutBytes, err := ioutil.ReadAll(stdout)
+	stdoutBytes, err := io.ReadAll(stdout)
 	if err != nil {
 		return nil, nil, errors.New("Error reading stdout from command " + commandString + ", error: " + err.Error())
 	}
 	// stderrBytes, err := readPipe(stderr)
-	stderrBytes, err := ioutil.ReadAll(stderr)
+	stderrBytes, err := io.ReadAll(stderr)
 	if err != nil {
 		return nil, nil, errors.New("Error reading stderr from command " + commandString + ", error: " + err.Error())
 	}
@@ -621,4 +622,3 @@ func SplitIdToken(idToken string) (id, token string) {
 	}
 	return
 }
-
