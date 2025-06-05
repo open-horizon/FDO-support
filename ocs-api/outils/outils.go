@@ -13,6 +13,7 @@ import (
 	mrand "math/rand"
 	"net"
 	"net/http"
+	urlpkg "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -376,7 +377,15 @@ func ExchangeAuthenticate(r *http.Request, currentExchangeUrl, deviceOrgId, cert
 		// Special case of exchange root user: in this case it is ok for the creds org to be different from the request/device org
 		// Just need to validate the root creds by calling GET /orgs/{orgid}/users
 		method = http.MethodGet
-		url = fmt.Sprintf("%v/orgs/%v/users", currentExchangeUrl, deviceOrgId)
+		if !strings.HasPrefix(currentExchangeUrl, "http://") && !strings.HasPrefix(currentExchangeUrl, "https://") {
+			currentExchangeUrl = "http://" + currentExchangeUrl
+		}
+
+		parsedUrl, err := urlpkg.Parse(fmt.Sprintf("%v/orgs/%v/users", currentExchangeUrl, deviceOrgId))
+		if err != nil {
+			return false, "", NewHttpError(http.StatusBadRequest, "invalid URL: %v", err)
+		}
+		url = parsedUrl.String()
 		goodStatusCode = http.StatusOK
 	} else {
 		// Non-root creds: Invoke exchange to confirm the client has valid user creds and have the access they need to create and manage this device.
@@ -389,7 +398,15 @@ func ExchangeAuthenticate(r *http.Request, currentExchangeUrl, deviceOrgId, cert
 		//url = fmt.Sprintf("%v/orgs/%v/users/%v/confirm", currentExchangeUrl, credOrgId, user)
 		//goodStatusCode = http.StatusCreated
 		method = http.MethodGet
-		url = fmt.Sprintf("%v/orgs/%v/users/%v", currentExchangeUrl, credOrgId, user)
+		if !strings.HasPrefix(currentExchangeUrl, "http://") && !strings.HasPrefix(currentExchangeUrl, "https://") {
+			currentExchangeUrl = "http://" + currentExchangeUrl
+		}
+
+		parsedUrl, err := urlpkg.Parse(fmt.Sprintf("%v/orgs/%v/users/%v", currentExchangeUrl, credOrgId, user))
+		if err != nil {
+			return false, "", NewHttpError(http.StatusBadRequest, "invalid URL: %v", err)
+		}
+		url = parsedUrl.String()
 		goodStatusCode = http.StatusOK
 	}
 	apiMsg := fmt.Sprintf("%v %v", method, url)

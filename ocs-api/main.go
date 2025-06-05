@@ -418,7 +418,7 @@ func postFdoVoucherHandler(orgId string, w http.ResponseWriter, r *http.Request)
 	outils.Verbose("POST /api/orgs/%s/fdo/vouchers: device UUID: %s", deviceOrgId, deviceUuid)
 
 	// Create the device directory in the OCS DB
-	deviceDir := filepath.Join(OcsDbDir, "v1", "devices", deviceUuid)
+	deviceDir := filepath.Clean(filepath.Join(OcsDbDir, "v1", "devices", deviceUuid))
 	if err := os.MkdirAll(deviceDir, 0750); err != nil {
 		http.Error(w, "could not create directory "+deviceDir+": "+err.Error(), http.StatusInternalServerError)
 		return
