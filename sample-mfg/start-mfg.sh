@@ -249,18 +249,45 @@ confirmcmds grep curl ping   # these should be in the minimal ubuntu
 
 # If java 11 isn't installed, do that
 if java -version 2>&1 | grep version | grep -q '1[7-7]\.'; then
-  echo "Found java 17"
+  echo "Found Java 17"
 else
   echo "Java 17 not found, installing it..."
+
   if isUbuntu2x; then
-    apt-get update && apt-get install -y openjdk-17-jre-headless
+    echo "Installing Java 17 manually on Ubuntu..."
+
+    wget -q https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11+9/OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9.tar.gz -O java17.tar.gz
+    chk $? "downloading Java 17"
+
+    tar -xzf java17.tar.gz
+    chk $? "extracting Java 17"
+
+    if [ -d "/opt/java-17" ]; then
+        echo "Removing existing /opt/java-17..."
+        sudo rm -rf /opt/java-17
+        chk $? "removing old Java installation"
+    fi
+
+    sudo mv jdk-17.0.11+9 /opt/java-17
+    chk $? "moving Java to /opt"
+
+    export PATH="/opt/java-17/bin:$PATH"
+    chk $? "updating PATH"
+    
+    echo "Java 17 installed successfully"
+
   elif isFedora; then
     dnf install -y java-17-openjdk
+    chk $? "installing Java 17 on Fedora"
+
   else
-    echo "Unsupported distribution, exiting" && exit 1
+    echo "Unsupported distribution, exiting"
+    exit 1
   fi
-  chk $? 'installing java 17'
+
+  echo "Java 17 installed successfully"
 fi
+
 
 # Deprecated with kernels 5.13.x and newer.
 if isKernelOld && (! command haveged --help >/dev/null 2>&1); then
