@@ -67,9 +67,27 @@ install_java() {
   echo "Java 17 not found, installing..."
 
   if is_Ubuntu2x; then
-    apt-get update
-    apt-get install -y openjdk-17-jre-headless
-    chk $? "installing Java 17 on Ubuntu"
+    echo "Installing Java 17 manually on Ubuntu..."
+
+    wget -q https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.11+9/OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9.tar.gz -O java17.tar.gz
+    chk $? "downloading Java 17"
+
+    tar -xzf java17.tar.gz
+    chk $? "extracting Java 17"
+
+    if [ -d "/opt/java-17" ]; then
+        echo "Removing existing /opt/java-17..."
+        sudo rm -rf /opt/java-17
+        chk $? "removing old Java installation"
+    fi
+
+    sudo mv jdk-17.0.11+9 /opt/java-17
+    chk $? "moving Java to /opt"
+
+    export PATH="/opt/java-17/bin:$PATH"
+    chk $? "adding Java 17 to PATH"
+
+    echo "Java 17 installed successfully"
 
   elif is_RHEL || is_Fedora; then
     dnf install -y java-17-openjdk
