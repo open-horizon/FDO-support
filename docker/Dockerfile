@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9-minimal:latest
+FROM registry.access.redhat.com/ubi10-minimal:latest
 
 # Builds a composite docker service that the "owner" needs to run. Specifically it contains the following services:
 #   FDO development/test rendezvous service
