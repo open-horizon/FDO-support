@@ -233,7 +233,7 @@ main() {
     export POSTGRES_HOST_AUTH_METHOD="${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}"
     export POSTGRES_IMAGE_TAG="${POSTGRES_IMAGE_TAG:-17}"
     export HZN_DOCK_NET="${HZN_DOCK_NET:-hzn_horizonnet}"
-    export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9} # https://github.com/fido-device-onboard/release-fidoiot/releases
+    export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.10} # https://github.com/fido-device-onboard/release-fidoiot/releases
     export FDO_RV_SVC_AUTH=${FDO_RV_SVC_AUTH:-apiUser:$(generateToken 30)}
     export FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
     export FDO_RV_POSTGRES_CONTAINER="postgres-fdo-rv-service"
