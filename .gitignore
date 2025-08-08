@@ -2,9 +2,8 @@
 ./ocs-api/linux/ocs-api
 ./agent-install.crt
 
-# Where the SDO files are downloaded to
-./fdo/
 # Where the FDO files are downloaded to 
+./fdo/
 fdo/
 #todo: remove
 

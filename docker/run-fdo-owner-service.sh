@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run the sdo-owner-services container on the Horizon management hub (IoT platform/owner.
+# Run the fdo-owner-services container on the Horizon management hub (IoT platform/owner.
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage
@@ -28,7 +28,7 @@ Optional environment variables (that do not usually need to be set):
   FDO_OWN_DB_SSL:             Database connection SSL toggle. Default is false.
   FDO_OWN_DB_USER:            Database username for the FDO Owner Service's database.
   FDO_OWN_SVC_AUTH:           FDO Owner Service API credentials. Default is generated. Format: apiUser:<password>
-  FDO_OWN_SVC_CERT_PATH:      Path that the directory holding the certificate and key files is mounted to within the container. Default is /home/sdouser/ocs-api-dir/keys .
+  FDO_OWN_SVC_CERT_PATH:      Path that the directory holding the certificate and key files is mounted to within the container. Default is /home/fdouser/ocs-api-dir/keys .
   FDO_OWN_SVC_PORT:           Docker external port number for the FDO Owner Service.
   FDO_RV_VOUCHER_TTL:         Tell the rendezvous server to persist vouchers for this number of seconds. Default is 7200.
   HZN_DOCK_NET:               Docker internal network name of Open Horizon's Management Hub.
@@ -137,9 +137,9 @@ docker run -d \
            postgres:"$POSTGRES_IMAGE_TAG"
 
 # Run the service container --mount "type=volume,src=fdo-ocs-db,dst=$FDO_OCS_DB_CONTAINER_DIR" $privateKeyMount $certKeyMount
-# EXCHANGE_INTERNAL_CERT: The base64 encoded certificate that OCS-API should use when contacting the exchange for authentication. Will default to the sdoapi.crt file in the directory specified by FDO_SVC_CERT_HOST_PATH.
+# EXCHANGE_INTERNAL_CERT: The base64 encoded certificate that OCS-API should use when contacting the exchange for authentication. Will default to the fdoapi.crt file in the directory specified by FDO_SVC_CERT_HOST_PATH.
 # FDO_OCS_SVC_TLS_PORT:   Port number OCS-API should listen on for TLS. Default is the value of FDO_OCS_SVC_PORT. (OCS API does not support TLS and non-TLS simultaneously.) Note: you can not set this to 9009, because OCS listens on that port internally. The TLS port takes precedence, if set.
-# FDO_SVC_CERT_HOST_PATH: Path on this host of the directory holding the certificate and key files named sdoapi.crt and sdoapi.key, respectively. Default is for the OCS-API to not support TLS.
+# FDO_SVC_CERT_HOST_PATH: Path on this host of the directory holding the certificate and key files named fdoapi.crt and fdoapi.key, respectively. Default is for the OCS-API to not support TLS.
 docker run -d \
            -e "FDO_DB_PASSWORD=$FDO_OWN_DB_PASSWORD" \
            -e "FDO_OPS_SVC_HOST=$HZN_LISTEN_IP:$FDO_OWN_SVC_PORT" \

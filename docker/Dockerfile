@@ -11,19 +11,6 @@ FROM registry.access.redhat.com/ubi9-minimal:latest
 #   https://access.redhat.com/articles/4238681
 #   https://playbook.cloudpaklab.ibm.com/ubi-faq/#Q_Can_I_addenable_additional_package_repositories_for_UBI_images
 
-# docker build requirements:
-#   Follow the Developer's section of the top-level README.md to download the necessary FDO tar files and build this docker image
-
-# docker run requirements (see run-sdo-owner-services.sh):
-#   Mount a named docker volume at WORKDIR/ocs/config/db
-#   Pass in the env vars required by start-sdo-owner-services.sh
-#   Expose the ports in the EXPOSE ports below
-
-# Image size reduction todos (0.9.3 is 1.03GB):
-# Following https://docs.docker.com/develop/dev-best-practices/ and others, e.g. https://www.ardanlabs.com/blog/2020/02/docker-images-part1-reducing-image-size.html
-# (future) run all sdo services in same tomcat instance
-
-
 # Note: if ENV variables are used in this Dockerfile, they can not effectively be overridden by docker run
 # WORKDIR: the working dir for the 2nd half of this file, and what all of the services will run from, FDO_OCS_DB_PATH: the ocs service read this. FDO_OCS_SVC_PORT and VERBOSE can be overridden on docker run.
 ENV WORKDIR=/home/fdouser
