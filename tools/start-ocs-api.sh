@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start the open-horizon SDO OCS API, not incd  a container, for debugging
+# Start the open-horizon FDO OCS API, not incd  a container, for debugging
 
 runEnv=${1:-dev}
 port=${FDO_OCS_API_PORT:-9008}
@@ -8,7 +8,7 @@ port=${FDO_OCS_API_PORT:-9008}
 if [[ "$runEnv" == "prod" ]]; then
 	:   # don't know if we need this yet
 elif [[ "$runEnv" == "dev" ]]; then
-	# We assume they run this in the SDO-support github dir
+	# We assume they run this in the FDO-support github dir
 	ocsDbDir=${FDO_OCS_API_DB_DIR:-ocs-api/ocs-db}    # this should be at the level ocs/config/db
 	mkdir -p $ocsDbDir
 	export VERBOSE='true'

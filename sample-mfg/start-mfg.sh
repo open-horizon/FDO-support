@@ -229,20 +229,6 @@ fi
 cd $workingDir || chk $? "creating and switching to $workingDir"
 echo "creating and switching to $workingDir"
 
-# Determine whether to use native sdo client, or java client.
-# Note: Now that we default useNativeClient, this automatic determination is never used, because you have to request the native docker image before you can use it here.
-#if [[ -z "$useNativeClient" ]]; then
-#    if [[ "$(systemd-detect-virt 2>/dev/null)" == 'none' ]]; then
-#        useNativeClient='host'   # A physical server
-#    else
-#        useNativeClient='false'   # A VM
-#    fi
-#    # Also could use these cmds to determine, but there are more acceptable values to check for
-#    # lscpu | grep 'Hypervisor vendor:' == non-blank or blank
-#    # dmidecode -s system-manufacturer | awk '{print $1}' == Intel(R), IBM. QEMU, innotek (virtual box), VMware
-#fi
-# else they explicitly set it
-
 # Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
 confirmcmds grep curl ping   # these should be in the minimal ubuntu
 

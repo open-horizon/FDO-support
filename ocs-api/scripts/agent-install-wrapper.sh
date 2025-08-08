@@ -2,7 +2,7 @@
 
 # The primary purpose of this wrapper is to be able to invoke agent-install.sh in the FDO context to install and register
 # the horizon agent and log all of its stdout/stderr. FDO is slow at downloading this wrapper script to the device, so keep it as short as possible.
-# This wrapper script is run on the edge device in the FDO directory /var/fdo/sdo_device_binaries_<version>_linux_x64/device. All of the needed files
+# This wrapper script is run on the edge device in the FDO directory /var/fdo/fdo_device_binaries_<version>_linux_x64/device. All of the needed files
 # like agent-install.cfg and agent-install.crt are downloaded by FDO to the same directory. HOW
 
 echo "$0 starting...."
@@ -21,14 +21,13 @@ if [ -f /target/boot/inside-fdo-container ]; then
     # Copy all of the downloaded files (including ourselves) to /target/boot, which is mounted from host /var/horizon/fdo-native
     echo "Copying downloaded files to /target/boot: $(ls | tr "\n" " ")"
     # need to exclude a few files and dirs, so copy with find
-    find . -maxdepth 1 -type f ! -name inside-fdo-container ! -name linux-client ! -name run_csdk_sdo.sh -exec cp -p -t /target/boot/ {} +
+    find . -maxdepth 1 -type f ! -name inside-fdo-container ! -name linux-client -exec cp -p -t /target/boot/ {} +
     if [ $? -ne 0 ]; then echo "Error: can not copy downloaded files to /target/boot"; fi
     # The <device-uuid>_exec file is not actually saved to disk, so recreate it (with a fixed name)
     echo "/bin/sh agent-install-wrapper.sh \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" " > /target/boot/device_exec
     chmod +x /target/boot/device_exec
     echo "Created /target/boot/device_exec: $(cat /target/boot/device_exec)"
     exit
-    # now the sdo container will exit, then our owner-boot-device script will find the files and run us again
 fi
 
 # Download agent-install.sh
