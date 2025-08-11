@@ -70,7 +70,7 @@ ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.10}
 # Get the license file
 COPY LICENSE.txt /licenses/
 #${FIDO_DEVICE_ONBOARD_REL_VER} 1.1.10 still uses 1.1.5.
-COPY fdo/NOTICES-v1.1.5/pri-fidoiot/* /licenses/FDOIotPlatformSDK/
+COPY fdo/NOTICES/* /licenses/FDOIotPlatformSDK/
 
 # Get owner db files. The owner subdir will be created automatically by COPY
 # Note: need to use uid and gid to be able to build on non-linux hosts

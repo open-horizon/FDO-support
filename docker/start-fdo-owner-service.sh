@@ -26,7 +26,7 @@ HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$HZN_LISTEN_IP:$ownerApiPort"}
 FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://postgres-fdo-owner-service:5432/fdo"}
 #VERBOSE='true'   # let it be set by the container provisioner
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage

@@ -21,13 +21,14 @@ if [ -f /target/boot/inside-fdo-container ]; then
     # Copy all of the downloaded files (including ourselves) to /target/boot, which is mounted from host /var/horizon/fdo-native
     echo "Copying downloaded files to /target/boot: $(ls | tr "\n" " ")"
     # need to exclude a few files and dirs, so copy with find
-    find . -maxdepth 1 -type f ! -name inside-fdo-container ! -name linux-client -exec cp -p -t /target/boot/ {} +
+    find . -maxdepth 1 -type f ! -name inside-fdo-container ! -name linux-client ! -name run_csdk_sdo.sh -exec cp -p -t /target/boot/ {} +
     if [ $? -ne 0 ]; then echo "Error: can not copy downloaded files to /target/boot"; fi
     # The <device-uuid>_exec file is not actually saved to disk, so recreate it (with a fixed name)
     echo "/bin/sh agent-install-wrapper.sh \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" " > /target/boot/device_exec
     chmod +x /target/boot/device_exec
     echo "Created /target/boot/device_exec: $(cat /target/boot/device_exec)"
     exit
+    # now the sdo container will exit, then our owner-boot-device script will find the files and run us again
 fi
 
 # Download agent-install.sh
@@ -59,11 +60,26 @@ if [ "${pkgsFrom%%:*}" = 'css' ]; then
     echo "Downloading $agentInstallRemotePath ..."
     httpCode=`curl -sSL -w "%{http_code}" -u "$deviceOrgId/$nodeAuth" --cacert agent-install.crt -o agent-install.sh "$agentInstallRemotePath"`
     if [ $? -ne 0 -o "$httpCode" != '200' ]; then
-        echo "~~~~~~~~~~~~~~~~\nError downloading $agentInstallRemotePath: httpCode=$httpCode\n~~~~~~~~~~~~~~~~"
+        echo "~~~~~~~~~~~~~~~~"
+        echo "Error downloading $agentInstallRemotePath: httpCode=$httpCode"
+        echo "~~~~~~~~~~~~~~~~"
         exit 2
     fi
-else   # $pkgsFrom==https://github.com/open-horizon/anax/releases/* but $cfgFrom is likely css:
-    # It is a URL like https://github.com/open-horizon/anax/releases/latest/download, just add agent-install.sh to the end
+elif [ "$pkgsFrom" = 'https://github.com/open-horizon/anax/releases/latest/download' ]; then 
+    # Download the horizon-agent-edge-cluster-files.tar.gz package that contains install-agent.sh script
+    agentFilesRemotePath="$pkgsFrom/horizon-agent-edge-cluster-files.tar.gz"
+    echo "Downloading $agentFilesRemotePath ..."
+    wget "$agentFilesRemotePath"
+    if [ $? -ne 0 ]; then
+        echo "~~~~~~~~~~~~~~~~"
+        echo "Error downloading $agentFilesRemotePath"
+        echo "~~~~~~~~~~~~~~~~"
+        exit 2
+    fi
+    # Extract the package
+    tar -zxvf horizon-agent-edge-cluster-files.tar.gz
+elif echo "$pkgsFrom" | grep -q '^https://github.com/open-horizon/anax/releases/'; then
+    # It is a URL like https://github.com/open-horizon/anax/releases/tag/vX.Y.Z/download, just add agent-install.sh to the end
     agentInstallRemotePath="$pkgsFrom/agent-install.sh"
     echo "Downloading $agentInstallRemotePath ..."
     httpCode=`curl -sSLO -w "%{http_code}" "$agentInstallRemotePath"`
@@ -71,6 +87,11 @@ else   # $pkgsFrom==https://github.com/open-horizon/anax/releases/* but $cfgFrom
         echo "~~~~~~~~~~~~~~~~\nError downloading $agentInstallRemotePath: httpCode=$httpCode\n~~~~~~~~~~~~~~~~"
         exit 2
     fi
+else
+    echo "~~~~~~~~~~~~~~~~"
+    echo "Error: unknown pkgsFrom value '$pkgsFrom'"
+    echo "~~~~~~~~~~~~~~~~"
+    exit 2
 fi
 chmod 755 agent-install.sh
 

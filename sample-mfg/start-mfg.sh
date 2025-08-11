@@ -89,7 +89,7 @@ if [[ -f "$ownerPubKeyFile" ]]; then
 fi
 
 # These environment variables can be overridden
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
 #useNativeClient=${FDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
 workingDir=fdo
 

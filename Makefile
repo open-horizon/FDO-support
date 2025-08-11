@@ -28,13 +28,13 @@ fdo:
 	mkdir fdo
 
 fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz: fdo
-	wget -P fdo https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
+	wget -P fdo https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/pri-fidoiot-NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
 
 fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER): fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
-	tar -zxf fdo/NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz -C fdo
+	tar -zxf fdo/pri-fidoiot-NOTICES-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz -C fdo
 
 fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz: fdo
-	wget -P fdo https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
+	wget -P fdo https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$(FIDO_DEVICE_ONBOARD_REL_VER)/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
 
 fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER): fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz
 	tar -zxf fdo/pri-fidoiot-v$(FIDO_DEVICE_ONBOARD_REL_VER).tar.gz -C fdo
