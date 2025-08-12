@@ -69,16 +69,16 @@ elif [ "$pkgsFrom" = 'https://github.com/open-horizon/anax/releases/latest/downl
     # Download the horizon-agent-edge-cluster-files.tar.gz package that contains install-agent.sh script
     agentFilesRemotePath="$pkgsFrom/horizon-agent-edge-cluster-files.tar.gz"
     echo "Downloading $agentFilesRemotePath ..."
-    wget "$agentFilesRemotePath"
-    if [ $? -ne 0 ]; then
+    httpCode=$(curl -sSL -w "%{http_code}" -o horizon-agent-edge-cluster-files.tar.gz "$agentFilesRemotePath")
+    if [ $? -ne 0 ] || [ "$httpCode" != "200" ]; then
         echo "~~~~~~~~~~~~~~~~"
-        echo "Error downloading $agentFilesRemotePath"
+        echo "Error downloading $agentFilesRemotePath: httpCode=$httpCode"
         echo "~~~~~~~~~~~~~~~~"
         exit 2
     fi
     # Extract the package
     tar -zxvf horizon-agent-edge-cluster-files.tar.gz
-elif echo "$pkgsFrom" | grep -q '^https://github.com/open-horizon/anax/releases/'; then
+else
     # It is a URL like https://github.com/open-horizon/anax/releases/tag/vX.Y.Z/download, just add agent-install.sh to the end
     agentInstallRemotePath="$pkgsFrom/agent-install.sh"
     echo "Downloading $agentInstallRemotePath ..."
@@ -87,11 +87,6 @@ elif echo "$pkgsFrom" | grep -q '^https://github.com/open-horizon/anax/releases/
         echo "~~~~~~~~~~~~~~~~\nError downloading $agentInstallRemotePath: httpCode=$httpCode\n~~~~~~~~~~~~~~~~"
         exit 2
     fi
-else
-    echo "~~~~~~~~~~~~~~~~"
-    echo "Error: unknown pkgsFrom value '$pkgsFrom'"
-    echo "~~~~~~~~~~~~~~~~"
-    exit 2
 fi
 chmod 755 agent-install.sh
 
