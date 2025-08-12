@@ -63,7 +63,7 @@ export FDO_MFG_PORT=${FDO_MFG_PORT:-8039}
 export FDO_MFG_SVC_AUTH=${FDO_MFG_SVC_AUTH:-apiUser:$(generateToken 30)}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_RV_URL=${FDO_RV_URL:-http://fdorv.com} # set to the production domain by default. Development domain is Owner's service public key protected as of v1.1.6.
-export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9} # https://github.com/fido-device-onboard/release-fidoiot/releases
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.10} # https://github.com/fido-device-onboard/release-fidoiot/releases
 export HZN_DOCK_NET=${HZN_DOCK_NET:-hzn_horizonnet}
 #export HZN_EXCHANGE_USER_AUTH=${HZN_EXCHANGE_USER_AUTH:-admin:} # Default to organization admin provided by all-in-1 environment
 export HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
@@ -89,7 +89,7 @@ if [[ -f "$ownerPubKeyFile" ]]; then
 fi
 
 # These environment variables can be overridden
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
 #useNativeClient=${FDO_DEVICE_USE_NATIVE_CLIENT:-false}   # possible values: false (java client), host (TO native on host), docker (TO native in container)
 workingDir=fdo
 
@@ -228,20 +228,6 @@ if [[ ! -d "$workingDir" ]]; then
 fi
 cd $workingDir || chk $? "creating and switching to $workingDir"
 echo "creating and switching to $workingDir"
-
-# Determine whether to use native sdo client, or java client.
-# Note: Now that we default useNativeClient, this automatic determination is never used, because you have to request the native docker image before you can use it here.
-#if [[ -z "$useNativeClient" ]]; then
-#    if [[ "$(systemd-detect-virt 2>/dev/null)" == 'none' ]]; then
-#        useNativeClient='host'   # A physical server
-#    else
-#        useNativeClient='false'   # A VM
-#    fi
-#    # Also could use these cmds to determine, but there are more acceptable values to check for
-#    # lscpu | grep 'Hypervisor vendor:' == non-blank or blank
-#    # dmidecode -s system-manufacturer | awk '{print $1}' == Intel(R), IBM. QEMU, innotek (virtual box), VMware
-#fi
-# else they explicitly set it
 
 # Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
 confirmcmds grep curl ping   # these should be in the minimal ubuntu

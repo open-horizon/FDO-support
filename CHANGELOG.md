@@ -1,6 +1,11 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.9.0] - 2025-08.12
+-  Update GitHub FDO release download link to the latest 1.1.10 and refactor the download logic in agent-install-wrapper.sh
+-  Update Go version to fix vulnerabilities
+-  Remove SDO and unnecessary pri-fidiot dependency
+
 ## [1.8.0] - 2025-06.18
 -  Fix CWE-918: Server Side Request Forgery
 

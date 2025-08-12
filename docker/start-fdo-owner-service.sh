@@ -10,7 +10,7 @@ ocsDbDir="${1:-"ocs-db/"}"
 ocsApiPort="${2:-${SDO_OCS_API_TLS_PORT:-${SDO_OCS_API_PORT:-$ocsApiPortDefault}}}"  # precedence: arg, or tls port, or non-tls port, or default
 
 workingDir='/home/fdouser'
-FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.9} # https://github.com/fido-device-onboard/release-fidoiot/releases
+FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.10} # https://github.com/fido-device-onboard/release-fidoiot/releases
 deviceBinaryDir="pri-fidoiot-v$FIDO_DEVICE_ONBOARD_REL_VER"
 # These can be passed in via CLI args or env vars
 tmp_pass=`head -c 15 /dev/random | base64`
@@ -26,7 +26,7 @@ HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
 HZN_FDO_API_URL=${HZN_FDO_API_URL:-"http://$HZN_LISTEN_IP:$ownerApiPort"}
 FDO_DB_URL=${FDO_DB_URL:-"jdbc:postgresql://postgres-fdo-owner-service:5432/fdo"}
 #VERBOSE='true'   # let it be set by the container provisioner
-FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/release-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
+FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     cat << EndOfMessage

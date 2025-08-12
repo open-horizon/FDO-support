@@ -2,7 +2,7 @@
 
 # The primary purpose of this wrapper is to be able to invoke agent-install.sh in the FDO context to install and register
 # the horizon agent and log all of its stdout/stderr. FDO is slow at downloading this wrapper script to the device, so keep it as short as possible.
-# This wrapper script is run on the edge device in the FDO directory /var/fdo/sdo_device_binaries_<version>_linux_x64/device. All of the needed files
+# This wrapper script is run on the edge device in the FDO directory /var/fdo/fdo_device_binaries_<version>_linux_x64/device. All of the needed files
 # like agent-install.cfg and agent-install.crt are downloaded by FDO to the same directory. HOW
 
 echo "$0 starting...."
@@ -60,11 +60,26 @@ if [ "${pkgsFrom%%:*}" = 'css' ]; then
     echo "Downloading $agentInstallRemotePath ..."
     httpCode=`curl -sSL -w "%{http_code}" -u "$deviceOrgId/$nodeAuth" --cacert agent-install.crt -o agent-install.sh "$agentInstallRemotePath"`
     if [ $? -ne 0 -o "$httpCode" != '200' ]; then
-        echo "~~~~~~~~~~~~~~~~\nError downloading $agentInstallRemotePath: httpCode=$httpCode\n~~~~~~~~~~~~~~~~"
+        echo "~~~~~~~~~~~~~~~~"
+        echo "Error downloading $agentInstallRemotePath: httpCode=$httpCode"
+        echo "~~~~~~~~~~~~~~~~"
         exit 2
     fi
-else   # $pkgsFrom==https://github.com/open-horizon/anax/releases/* but $cfgFrom is likely css:
-    # It is a URL like https://github.com/open-horizon/anax/releases/latest/download, just add agent-install.sh to the end
+elif [ "$pkgsFrom" = 'https://github.com/open-horizon/anax/releases/latest/download' ]; then 
+    # Download the horizon-agent-edge-cluster-files.tar.gz package that contains install-agent.sh script
+    agentFilesRemotePath="$pkgsFrom/horizon-agent-edge-cluster-files.tar.gz"
+    echo "Downloading $agentFilesRemotePath ..."
+    httpCode=$(curl -sSL -w "%{http_code}" -o horizon-agent-edge-cluster-files.tar.gz "$agentFilesRemotePath")
+    if [ $? -ne 0 ] || [ "$httpCode" != "200" ]; then
+        echo "~~~~~~~~~~~~~~~~"
+        echo "Error downloading $agentFilesRemotePath: httpCode=$httpCode"
+        echo "~~~~~~~~~~~~~~~~"
+        exit 2
+    fi
+    # Extract the package
+    tar -zxvf horizon-agent-edge-cluster-files.tar.gz
+else
+    # It is a URL like https://github.com/open-horizon/anax/releases/tag/vX.Y.Z/download, just add agent-install.sh to the end
     agentInstallRemotePath="$pkgsFrom/agent-install.sh"
     echo "Downloading $agentInstallRemotePath ..."
     httpCode=`curl -sSLO -w "%{http_code}" "$agentInstallRemotePath"`
