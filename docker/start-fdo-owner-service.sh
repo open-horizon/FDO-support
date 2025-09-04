@@ -69,14 +69,14 @@ chkHttp() {
 }
 
 isDockerComposeAtLeast() {
-    : ${1:?}
+    : "${1:?}"
     local minVersion=$1
     if ! command -v docker-compose >/dev/null 2>&1; then
         return 1   # it is not even installed
     fi
     # docker-compose is installed, check its version
     lowerVersion=$(echo -e "$(docker-compose version --short)\n$minVersion" | sort -V | head -n1)
-    if [[ $lowerVersion == $minVersion ]]; then
+    if [[ $lowerVersion == "$minVersion" ]]; then
         return 0   # the installed version was >= minVersion
     else
         return 1
@@ -96,7 +96,7 @@ fi
 
 if [[ ${FDO_API_PWD} != *"apiUser:"* || $FDO_API_PWD == *$'\n'* || $FDO_API_PWD == *'|'* ]]; then
     # newlines and vertical bars aren't allowed in the pw, because they cause the sed cmds below to fail
-    echo "Error: FDO_API_PWD must include "apiUser:" as a prefix and not contain newlines or '|'"
+    echo ""Error: FDO_API_PWD must include "apiUser:" as a prefix and not contain newlines or '|'""
     exit 1
 fi
 
@@ -114,7 +114,7 @@ echo "Using external FDO_OPS_SVC_HOST: $FDO_OPS_SVC_HOST (for now only used for 
 declare -a ScriptArray=("./demo_ca.sh" "./web_csr_req.sh" "./user_csr_req.sh" "./keys_gen.sh")
 
 # Iterate the string array using for loop
-for val in ${ScriptArray[@]}; do
+for val in "${ScriptArray[@]}"; do
    (cd $workingDir/$deviceBinaryDir/scripts && chmod +x $val)
    (cd $workingDir/$deviceBinaryDir/scripts && $val)
 done
@@ -156,12 +156,17 @@ chk $? 'sed owner/service.yml db_password'
 
 #need java installed in order to generate the SSL keystore for HTTPS
 # If java 17 isn't installed, do that
-if java -version 2>&1 | grep version | grep -q 17.; then
-    echo "Found java 17"
+if java -version 2>&1 | grep version | grep -q 21.; then
+    echo "Found java 21"
 else
-    echo "Java 17 not found, installing it..."
-    apt-get update && apt-get install -y openjdk-17-jre-headless
-    chk $? 'installing java 17'
+  echo "Java 21 not found, installing it..."
+  if [[ $(grep -oPm1 "ID=[\"']?\K.[^\"']+" /etc/os-release) == ubuntu ]]; then
+    apt-get update && apt-get install -y openjdk-21-jre-headless
+    chk $? 'installing java 21'
+  else
+    microdnf install --disableplugin=subscription-manager --nodocs --setopt=install_weak_deps=0 -y java-21-openjdk-headless
+    chk $? 'installing java 21'
+  fi
 fi
 
 #    echo "Using local testing configuration, because FDO_DEV=$FDO_DEV"
