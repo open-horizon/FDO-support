@@ -25,8 +25,8 @@ ENV FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_PORT
 WORKDIR /root
 
 RUN mkdir -p /run/user/$UID && \
-    microdnf microdnf update --disableplugin=subscription-manager --nodocs --refresh --setopt=install_weak_deps=0 -y 1>/dev/null 2>&1 && \
-    microdnf microdnf install --disableplugin=subscription-manager --nodocs --setopt=install_weak_deps=0 -y ca-certificates findutils gettext java-21-openjdk-headless openssl procps shadow-utils tar 1>/dev/null 2>&1 && \
+    microdnf update --disableplugin=subscription-manager --nodocs --refresh --setopt=install_weak_deps=0 -y 1>/dev/null 2>&1 && \
+    microdnf install --disableplugin=subscription-manager --nodocs --setopt=install_weak_deps=0 -y ca-certificates findutils gettext java-21-openjdk-headless openssl procps shadow-utils tar 1>/dev/null 2>&1 && \
     microdnf clean all 1>/dev/null 2>&1 && \
     useradd -r -u 1000 --create-home --system -g root fdouser
 

@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0]
+- Removed duplicated terminal commands.
+
 ## [1.11.0]
 - Bumped expected Java version in startup script to 21.
 
