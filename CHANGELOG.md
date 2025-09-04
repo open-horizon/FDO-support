@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [1.11.0]
+- Bumped expected Java version in startup script to 21.
+
 ## [1.10.0] - 2025-09.04
 - Updated the base image to UBI 10
 - Upgraded Java to version 21 in the base image

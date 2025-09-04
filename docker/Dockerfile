@@ -24,39 +24,11 @@ ENV FDO_OCS_SVC_TLS_PORT=$FDO_OCS_SVC_PORT
 # Working during during the installations
 WORKDIR /root
 
-# The haveged rpm (needed by RV) is in EPEL, so add that repo: https://fedoraproject.org/wiki/EPEL
-# To see the available EPEL pkgs: http://mirror.nodesdirect.com/epel/8/Everything/x86_64/Packages/
-# Note: supposedly we could get this from the RHEL repo, if we go thru the right paperwork: https://developers.redhat.com/blog/2020/02/26/red-hat-simplifies-container-dev-and-redistribution-rhel-packages/
-# To search for rpms (or for what rpms provides a command): http://www.rpm-find.net/linux/RPM/
-# Note: libssl-dev is is required by all the fdo services on ubuntu. I think the equivalent rpm is openssl-devel
-# Note: due to a bug in microdnf, using the --nodocs option causes an exit code of 141: https://github.com/rpm-software-management/microdnf/issues/50
 RUN mkdir -p /run/user/$UID && \
-    microdnf update -y --refresh --nodocs 1>/dev/null 2>&1 && \
-    microdnf install -y --nodocs ca-certificates findutils gettext java-21-openjdk-headless openssl procps shadow-utils tar && \
-    microdnf clean all
-
-#RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-#    rpm -i /root/epel-release-latest-8.noarch.rpm && \
-#    microdnf update -y && \
-#    microdnf install --nodocs -y openssl ca-certificates tar findutils shadow-utils procps openssl-devel haveged && \
-#    microdnf clean all
-
-RUN useradd -r -u 1000 -g root fdouser \
-    && mkdir /home/fdouser \
-    && chown -R fdouser:root /home/fdouser
-
-# Install openjdk-11-jre. The tar.gz file is 43 MB, unpacked is 124 MB
-# Note: with FDO 1.7, it is necessary to use java 11.0.4 or earlier, because there is an issue with the FDO bouncycastle version and 11.0.5 and above
-#RUN curl -sS -o openjre-11_linux-x64_bin.tar.gz https://cdn.azul.com/zulu/bin/zulu11.33.15-ca-jre11.0.4-linux_x64.tar.gz && \
-#RUN curl -sS -o openjre-11_linux-x64_bin.tar.gz https://cdn.azul.com/zulu/bin/zulu11.43.55-ca-jre11.0.9.1-linux_x64.tar.gz && \
-#    mv zulu11.*-linux_x64 /usr/lib/jvm/openjre-11-manual-installation && \
-#RUN curl -sSL -o openjre-11_linux-x64_bin.tar.gz https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jre_x64_linux_11.0.15_10.tar.gz && \
-#    sha256sum openjre-11_linux-x64_bin.tar.gz && \
-#    tar xzf openjre-11_linux-x64_bin.tar.gz && \
-#    rm openjre-11_linux-x64_bin.tar.gz && \
-#    mkdir -p /usr/lib/jvm && \
-#    mv openjdk-11.0.15_10-jre /usr/lib/jvm/openjre-11-manual-installation && \
-#    update-alternatives --install /usr/bin/java java /usr/lib/jvm/openjre-11-manual-installation/bin/java 1
+    microdnf microdnf update --disableplugin=subscription-manager --nodocs --refresh --setopt=install_weak_deps=0 -y 1>/dev/null 2>&1 && \
+    microdnf microdnf install --disableplugin=subscription-manager --nodocs --setopt=install_weak_deps=0 -y ca-certificates findutils gettext java-21-openjdk-headless openssl procps shadow-utils tar 1>/dev/null 2>&1 && \
+    microdnf clean all 1>/dev/null 2>&1 && \
+    useradd -r -u 1000 --create-home --system -g root fdouser
 
 # this doesn't work here, because docker writes /etc/hosts when it starts the container
 #RUN echo "127.0.0.1 RVFDO OwnerFDO" >> /etc/hosts
