@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9-minimal:latest
+FROM registry.access.redhat.com/ubi10-minimal:latest
 
 # Builds a composite docker service that the "owner" needs to run. Specifically it contains the following services:
 #   FDO development/test rendezvous service
@@ -31,8 +31,8 @@ WORKDIR /root
 # Note: libssl-dev is is required by all the fdo services on ubuntu. I think the equivalent rpm is openssl-devel
 # Note: due to a bug in microdnf, using the --nodocs option causes an exit code of 141: https://github.com/rpm-software-management/microdnf/issues/50
 RUN mkdir -p /run/user/$UID && \
-    microdnf update -y --nodocs 1>/dev/null 2>&1 && \
-    microdnf install -y --nodocs ca-certificates findutils gettext java-17-openjdk openssl procps shadow-utils tar && \
+    microdnf update -y --refresh --nodocs 1>/dev/null 2>&1 && \
+    microdnf install -y --nodocs ca-certificates findutils gettext java-21-openjdk-headless openssl procps shadow-utils tar && \
     microdnf clean all
 
 #RUN curl -sS -o epel-release-latest-8.noarch.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \

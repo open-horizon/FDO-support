@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.10.0] - 2025-09.04
+- Updated the base image to UBI 10
+- Upgraded Java to version 21 in the base image
+
 ## [1.9.0] - 2025-08.12
 -  Update GitHub FDO release download link to the latest 1.1.10 and refactor the download logic in agent-install-wrapper.sh
 -  Update Go version to fix vulnerabilities
