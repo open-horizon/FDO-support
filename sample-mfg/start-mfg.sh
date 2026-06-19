@@ -1,4 +1,5 @@
 #!/bin/bash
+#
 
 # On a linux VM, simulate the steps a device manufacturer would do:
 #   - Create instructions for device to redirect device to correct RV server = DI (device initialization)
@@ -63,7 +64,7 @@ export FDO_MFG_PORT=${FDO_MFG_PORT:-8039}
 export FDO_MFG_SVC_AUTH=${FDO_MFG_SVC_AUTH:-apiUser:$(generateToken 30)}
 export FDO_OWN_COMP_SVC_PORT=${FDO_OWN_COMP_SVC_PORT:-9008}
 export FDO_RV_URL=${FDO_RV_URL:-http://fdorv.com} # set to the production domain by default. Development domain is Owner's service public key protected as of v1.1.6.
-export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.10} # https://github.com/fido-device-onboard/release-fidoiot/releases
+export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.11} # https://github.com/fido-device-onboard/release-fidoiot/releases
 export HZN_DOCK_NET=${HZN_DOCK_NET:-hzn_horizonnet}
 #export HZN_EXCHANGE_USER_AUTH=${HZN_EXCHANGE_USER_AUTH:-admin:} # Default to organization admin provided by all-in-1 environment
 export HZN_LISTEN_IP=${HZN_LISTEN_IP:-127.0.0.1}
@@ -166,22 +167,6 @@ isDebPkgInstalled() {
     dpkg-query -s $pkgName 2>&1 | grep -q -E '^Status: .* installed$'
 }
 
-# Checks if docker-compose is installed, and if so, if it is at least this minimum version
-isDockerComposeAtLeast() {
-    : ${1:?}
-    local minVersion=$1
-    if ! command -v docker-compose >/dev/null 2>&1; then
-        return 1   # it is not even installed
-    fi
-    # docker-compose is installed, check its version
-    lowerVersion=$(echo -e "$(docker-compose version --short)\n$minVersion" | sort -V | head -n1)
-    if [[ $lowerVersion == "$minVersion" ]]; then
-        return 0   # the installed version was >= minVersion
-    else
-        return 1
-    fi
-}
-
 # Find 1 of the private IPs of the host
 getPrivateIp() {
     if isMacOS; then ipCmd=ifconfig
@@ -229,13 +214,12 @@ fi
 cd $workingDir || chk $? "creating and switching to $workingDir"
 echo "creating and switching to $workingDir"
 
-# Make sure the host has the necessary software: java 11, docker-ce, docker-compose >= 1.21.0
-confirmcmds grep curl ping   # these should be in the minimal ubuntu
+# Make sure the host has the necessary software
+confirmcmds grep curl ping  # these should be in the minimal ubuntu
 
-
-# If java 11 isn't installed, do that
-if java -version 2>&1 | grep version | grep -q '1[7-7]\.'; then
-  echo "Found java 17"
+# Check for Java 17 or above
+if java -version 2>&1 | grep version | grep -e '2[1-9]\.' -e '1[7-7]\.'; then
+  echo "Acceptable java level found"
 else
   echo "Java 17 not found, installing it..."
   if isUbuntu2x; then
@@ -272,6 +256,12 @@ if ! command -v docker >/dev/null 2>&1; then
     fi
 fi
 
+docker network inspect ${HZN_DOCK_NET}
+rc=$?
+if [[ $rc -ne 0 ]]; then
+    docker network create ${HZN_DOCK_NET}
+fi
+
 # Start a DB container for FDO's manufacturer services
 docker run -d \
            -e "POSTGRES_DB=$FDO_MFG_DB" \
@@ -286,26 +276,16 @@ docker run -d \
            --name postgres-fdo-mfg-service \
            --network="$HZN_DOCK_NET" \
            -p "$FDO_MFG_DB_PORT":5432 \
-           postgres:"$POSTGRES_IMAGE_TAG"
+           public.ecr.aws/docker/library/postgres:"$POSTGRES_IMAGE_TAG"
 
 
-# If docker-compose isn't installed, or isn't at least 1.29.2 (when docker-compose.yml version 2.4 was introduced), then install/upgrade it
-# For the dependency on 1.29.2 or greater, see: https://docs.docker.com/compose/release-notes/
-minVersion=1.29.2
-if ! isDockerComposeAtLeast $minVersion; then
-    if [[ -f '/usr/bin/docker-compose' ]]; then
-        echo "Error: Need at least docker-compose $minVersion. A down-level version is currently installed, preventing us from installing the latest version. Uninstall docker-compose and rerun this script."
-        exit 2
-    fi
-    echo "docker-compose is not installed or not at least version $minVersion, installing/upgrading it..."
-    # Install docker-compose from its github repo, because that is the only way to get a recent enough version
-    curl --progress-bar -L "https://github.com/docker/compose/releases/$minVersion/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chk $? 'downloading docker-compose'
-    chmod +x /usr/local/bin/docker-compose
-    chk $? 'making docker-compose executable'
-    ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-    chk $? 'linking docker-compose to /usr/bin'
+UBUNTU_22=$( docker image ls "ubuntu:22.04" | grep -v IMAGE | grep "22.04" )
+if  [ -z "${UBUNTU_22}" ]; then
+        # ubuntu:22.04 used to build base container images
+        docker pull public.ecr.aws/ubuntu/ubuntu:22.04
+        docker tag public.ecr.aws/ubuntu/ubuntu:22.04 ubuntu:22.04
 fi
+
 
 # Get the other files we need from our git repo, by way of our device binaries tar file
 if [[ ! -d $deviceBinaryDir ]]; then
@@ -378,11 +358,11 @@ echo "Starting manufacturer service..."
 sudo chmod 666 /var/run/docker.sock
 cd ./$deviceBinaryDir/manufacturer || exit
 # Adding container to open horizon docker network.
-sed -i -e 's/version:.*/&\n\nnetworks:\n  horizonnet:\n    name: hzn_horizonnet\n    driver: bridge/' ./docker-compose.yml
+sed -i -e "s/version:.*/&\n\nnetworks:\n  horizonnet:\n    name: ${HZN_DOCK_NET}\n    driver: bridge\n    external: true/" ./docker-compose.yml
 chk $? 'sed docker-compose.yml network bridge'
 sed -i -e 's/restart:.*/&\n    networks:\n      - horizonnet/' ./docker-compose.yml
 chk $? 'sed docker-compose.yml network'
-docker-compose up --build -d
+docker compose up --build -d
 
 # get Domain Name from Rendezvous Server URL
 FDO_RV_DNS=$(echo "$FDO_RV_URL" | awk -F/ '{print $3}' | awk -F: '{print $1}')
@@ -400,7 +380,7 @@ done
 echo ""
 
 echo "setting rendezvous server location to ${FDO_RV_DNS}:${rvHttpPort}"
-response=$(curl -s -w "%{http_code}" -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,"'"${rvHttpPort}"'"],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,"'"${rvHttpPort}"'"]]]')
+response=$(curl -s -w "%{http_code}" -D - --digest -u "$FDO_MFG_SVC_AUTH" --location --request POST "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_MFG_PORT/api/v1/rvinfo" --header 'Content-Type: text/plain' --data-raw '[[[5,"'"${FDO_RV_DNS}"'"],[3,'"${rvHttpPort}"'],[12,1],[2,"'"${FDO_RV_DNS}"'"],[4,'"${rvHttpPort}"']]]')
 code=$?
 httpCode=$(tail -n1 <<< "$response")
 chkHttp $code $httpCode "setting rendezvous server location"
@@ -423,7 +403,7 @@ alias=$(echo $response | grep -o '"alias":"[^"]*' | grep -o '[^"]*$')
 echo "alias:$alias"
 
 echo "getting device public key"
-httpCode=$(curl -s -w "%{http_code}" -o public_key.pem -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" --location "$HZN_TRANSPORT://$HZN_LISTEN_IP:$FDO_OWN_COMP_SVC_PORT/api/orgs/$HZN_ORG_ID/fdo/certificate/$alias")
+httpCode=$(curl -s -w "%{http_code}" -o public_key.pem -u "$HZN_ORG_ID/$HZN_EXCHANGE_USER_AUTH" --location "${HZN_FDO_SVC_URL}/orgs/$HZN_ORG_ID/fdo/certificate/$alias")
 chkHttp $? $httpCode "getting device public key"
 
 echo "getting ownership voucher"
