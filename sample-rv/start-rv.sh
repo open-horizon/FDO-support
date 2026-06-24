@@ -84,12 +84,11 @@ install_java() {
 }
 
 check_and_install_java() {
-  java_version=$(java -version 2>&1 | awk -F[\".] '/version/ {print $2}')
-
-  if [[ "$java_version" == "17" ]]; then
-    echo "Java 17 is already installed"
-  else
-    install_java
+  java -version 2>&1 > /dev/null
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "Java is not installed; exiting"
+    exit 1
   fi
 }
 
@@ -233,7 +232,7 @@ main() {
     export POSTGRES_HOST_AUTH_METHOD="${POSTGRES_HOST_AUTH_METHOD:-scram-sha-256}"
     export POSTGRES_IMAGE_TAG="${POSTGRES_IMAGE_TAG:-17}"
     export HZN_DOCK_NET="${HZN_DOCK_NET:-hzn_horizonnet}"
-    export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.10} # https://github.com/fido-device-onboard/release-fidoiot/releases
+    export FIDO_DEVICE_ONBOARD_REL_VER=${FIDO_DEVICE_ONBOARD_REL_VER:-1.1.11} # https://github.com/fido-device-onboard/release-fidoiot/releases
     export FDO_RV_SVC_AUTH=${FDO_RV_SVC_AUTH:-apiUser:$(generateToken 30)}
     export FDO_SUPPORT_RELEASE=${FDO_SUPPORT_RELEASE:-https://github.com/fido-device-onboard/pri-fidoiot/releases/download/v$FIDO_DEVICE_ONBOARD_REL_VER}
     export FDO_RV_POSTGRES_CONTAINER="postgres-fdo-rv-service"
@@ -244,6 +243,12 @@ main() {
     create_and_switch_directory "$workingDir"
     check_and_install_java
     check_and_install_docker
+
+    docker network inspect ${HZN_DOCK_NET}
+    rc=$?
+    if [[ $rc -ne 0 ]]; then
+        docker network create ${HZN_DOCK_NET}
+    fi
 
     # Start a DB container for FDO's rv service
     docker rm -f $FDO_RV_POSTGRES_CONTAINER
@@ -260,10 +265,17 @@ main() {
         --name $FDO_RV_POSTGRES_CONTAINER \
         --network="$HZN_DOCK_NET" \
         -p "$FDO_RV_DB_PORT":5432 \
-        postgres:"$POSTGRES_IMAGE_TAG"
+        public.ecr.aws/docker/library/postgres:"$POSTGRES_IMAGE_TAG"
 
     download_and_extract_device_binaries
     generate_and_copy_keys
+
+    UBUNTU_22=$( docker image ls "ubuntu:22.04" | grep -v IMAGE | grep "22.04" )
+    if  [ -z "${UBUNTU_22}" ]; then
+            # ubuntu:22.04 used to build base container images
+            docker pull public.ecr.aws/ubuntu/ubuntu:22.04
+            docker tag public.ecr.aws/ubuntu/ubuntu:22.04 ubuntu:22.04
+    fi
 
     api_user=$(echo "$FDO_RV_SVC_AUTH" | awk -F: '{print $1}')
     api_password=$(echo "$FDO_RV_SVC_AUTH" | awk -F: '{print $2}')
@@ -303,9 +315,9 @@ main() {
     sed -i -e '/- db_password/ s/^/#/' "$rvServiceYmlPath"
 
     # Replace port numbers
-    sed -i 's/^[[:space:]]*http_port: 8040$/  http_port: 80/' "$rvServiceYmlPath"
+    sed -i 's/^[[:space:]]*http_port: 8040$/  http_port: 8040/' "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml http_port: 8040'
-    sed -i 's/^[[:space:]]*https_port: 8041$/  https_port: 443/' "$rvServiceYmlPath"
+    sed -i 's/^[[:space:]]*https_port: 8041$/  https_port: 8041/' "$rvServiceYmlPath"
     chk $? 'sed rv/service.yml https_port: 8041'
 
     # Uncomment UntrustedRendezvousAcceptFunction (preserve indentation)
@@ -318,9 +330,9 @@ main() {
     sudo chmod 666 /var/run/docker.sock
     cd ./$deviceBinaryDir/rv || exit
     # Adding container to open horizon docker network.
-    sed -i -e 's/version:.*/&\n\nnetworks:\n  horizonnet:\n    name: hzn_horizonnet\n    driver: bridge/' ./docker-compose.yml
+    sed -i -e "s/version:.*/&\n\nnetworks:\n  horizonnet:\n    name: ${HZN_DOCK_NET}\n    driver: bridge\n    external: true/" ./docker-compose.yml
     sed -i -e 's/restart:.*/&\n    networks:\n      - horizonnet/' ./docker-compose.yml
-    docker-compose up --build -d
+    docker compose up --build -d
 }
 
 # Execute main function
