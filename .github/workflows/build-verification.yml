@@ -1,0 +1,43 @@
+name: Build Verification
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-verification:
+    runs-on: ubuntu-latest
+
+    env:
+      GOPATH: ${{ github.workspace }}/go
+      REPO_DIR: ${{ github.workspace }}/go/src/github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+    steps:
+      - name: Checkout GitHub Repo
+        uses: actions/checkout@v4
+        with:
+          path: go/src/github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true
+
+      - name: Config Version Variables
+        id: config-version
+        run: |
+          cd "$REPO_DIR"
+          VERSION=$(sed -n 's/export VERSION ?= //p' Makefile | cut -d '$' -f 1)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compile and Build Docker Images
+        run: |
+          cd "$REPO_DIR"
+          make clean
+          make
+          docker image ls
+        env:
+          VERSION: '${{ steps.config-version.outputs.VERSION }}-${{ github.run_number }}'
