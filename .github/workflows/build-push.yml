@@ -119,6 +119,10 @@ jobs:
           if [[ $GITHUB_REF == 'refs/heads/main' ]]; then
             docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
             docker push ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
+
+            docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION}
+            docker push ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION}
+
             docker tag ${DOCKER_REGISTRY}/${FDO_DOCKER_IMAGE}:${VERSION} ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
             docker push ${GITHUB_CONTAINER_REGISTRY}/${FDO_DOCKER_IMAGE}:testing
           else
