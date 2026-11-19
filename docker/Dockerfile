@@ -37,7 +37,7 @@ USER fdouser
 WORKDIR $WORKDIR
 
 ARG fido_device_onboard_rel_ver
-ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.10}
+ENV FIDO_DEVICE_ONBOARD_REL_VER=${fido_device_onboard_rel_ver:-1.1.11}
 
 # Get the license file
 COPY LICENSE.txt /licenses/
